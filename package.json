@@ -11,7 +11,7 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@vercel/postgres": "latest",
+    "pg": "latest", 
     "chart.js": "latest",
     "leaflet": "latest",
     "react-chartjs-2": "latest",
