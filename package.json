@@ -8,13 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "pg": "latest", 
-    "chart.js": "latest",
-    "leaflet": "latest",
-    "react-chartjs-2": "latest",
-    "react-leaflet": "latest"
+    "next": "14.2.16",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "pg": "^8.11.3",
+    "chart.js": "^4.4.1",
+    "leaflet": "^1.9.4",
+    "react-chartjs-2": "^5.2.0",
+    "react-leaflet": "^4.2.1"
   }
 }
