@@ -89,23 +89,19 @@ export default function Home() {
   };
 
   // --- STYLES HELPER ---
-  // Updated Card Style for the Top Readings
   const getReadingCardStyle = (color) => ({
     backgroundColor: '#fff', 
-    borderRadius: '25px', 
-    padding: '25px', 
-    // Full Colored Border:
+    borderRadius: '15px',     // Slightly tighter corners
+    padding: '10px 15px',     // Much less padding
     border: `3px solid ${color}`,
-    // Soft colored shadow matching the border:
-    boxShadow: `0 8px 20px ${color}33`, 
+    boxShadow: `0 4px 10px ${color}22`, 
     textAlign: 'center',
     height: '100%',
-    // Flexbox for perfect centering:
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '160px'
+    minHeight: '100px'        // Reduced height (was 160px)
   });
 
   const cardStyle = {
@@ -176,130 +172,4 @@ export default function Home() {
           right: 20px; 
           z-index: 1000; 
           background: rgba(255,255,255,0.95); 
-          padding: 10px 15px; 
-          border-radius: 40px; 
-          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-          display: flex;
-          flex-wrap: wrap;
-          gap: 5px;
-          max-width: 90%;
-        }
-
-        @media (max-width: 768px) {
-          .main-container { padding: 30px 4%; }
-          .title-main { font-size: 2.0em; }
-          .title-sub { font-size: 1.5em; margin-bottom: 20px; }
-          .section-title { font-size: 1.8em; margin-top: 40px; }
-          .map-controls {
-            top: 10px;
-            right: 50%;
-            transform: translateX(50%);
-            width: 90%;
-            justify-content: center;
-          }
-          .map-label { display: none; }
-        }
-      `}</style>
-      
-      {/* HEADER */}
-      <header style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <h1 className="title-main">
-          MONITORAMENTO DE QUALIDADE DO AR
-        </h1>
-        <h2 className="title-sub">
-          LAB. VI - IFUSP
-        </h2>
-        
-        {/* CARDS (New Styles applied here) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '40px' }}>
-          
-          {/* TEMP CARD */}
-          <div style={getReadingCardStyle('rgb(255, 99, 132)')}>
-            <div style={{ color: 'rgb(255, 99, 132)', fontSize: '1.2em', fontWeight: '900', marginBottom: '5px' }}>TEMPERATURA</div>
-            <div style={{ fontSize: '2.8em', fontWeight: 'bold', color: 'rgb(255, 99, 132)' }}>{latest.temp.toFixed(1)}°C</div>
-          </div>
-
-          {/* HUM CARD */}
-          <div style={getReadingCardStyle('rgb(54, 162, 235)')}>
-            <div style={{ color: 'rgb(54, 162, 235)', fontSize: '1.2em', fontWeight: '900', marginBottom: '5px' }}>UMIDADE</div>
-            <div style={{ fontSize: '2.8em', fontWeight: 'bold', color: 'rgb(54, 162, 235)' }}>{latest.humidity.toFixed(1)}%</div>
-          </div>
-
-          {/* MQ9 CARD */}
-          <div style={getReadingCardStyle('rgb(255, 159, 64)')}>
-            <div style={{ color: 'rgb(255, 159, 64)', fontSize: '1.2em', fontWeight: '900', marginBottom: '5px' }}>GÁS (MQ9)</div>
-            <div style={{ fontSize: '2.8em', fontWeight: 'bold', color: 'rgb(255, 159, 64)' }}>{latest.mq9_val}</div>
-          </div>
-
-          {/* MQ135 CARD */}
-          <div style={getReadingCardStyle('rgb(75, 192, 192)')}>
-            <div style={{ color: 'rgb(75, 192, 192)', fontSize: '1.2em', fontWeight: '900', marginBottom: '5px' }}>AR (MQ135)</div>
-            <div style={{ fontSize: '2.8em', fontWeight: 'bold', color: 'rgb(75, 192, 192)' }}>{latest.mq135_val}</div>
-          </div>
-
-        </div>
-      </header>
-
-      {/* SECTION 1: OVERVIEW */}
-      <h2 className="section-title">VISÃO GERAL</h2>
-      
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', marginBottom: '20px' }}>
-        
-        {/* MAP */}
-        <div style={{ flex: '3', minWidth: '300px' }}>
-          <div style={{ ...cardStyle, padding: '0', border: '5px solid #fff', overflow: 'hidden', height: '600px', position: 'relative' }}>
-            <div className="map-controls">
-              <span className="map-label" style={{ fontSize: '0.8em', fontWeight: 'bold', color: '#888', marginRight: '5px', alignSelf: 'center' }}>VISUALIZAR:</span>
-              <button style={buttonStyle(mapMode === 'temp', 'rgb(255, 99, 132)')} onClick={() => setMapMode('temp')}>Temp</button>
-              <button style={buttonStyle(mapMode === 'hum', 'rgb(54, 162, 235)')} onClick={() => setMapMode('hum')}>Umid</button>
-              <button style={buttonStyle(mapMode === 'mq9', 'rgb(255, 159, 64)')} onClick={() => setMapMode('mq9')}>MQ9</button>
-              <button style={buttonStyle(mapMode === 'mq135', 'rgb(75, 192, 192)')} onClick={() => setMapMode('mq135')}>MQ135</button>
-            </div>
-            <Map data={data} mode={mapMode} />
-          </div>
-          <p style={{ textAlign: 'center', marginTop: '10px', color: '#999', fontSize: '0.9em' }}>📍 Localização: {latest.latitude.toFixed(4)}, {latest.longitude.toFixed(4)}</p>
-        </div>
-
-        {/* SIDE GRAPHS */}
-        <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '30px', minWidth: '300px' }}>
-          <div style={{ ...cardStyle, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '250px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h4 style={{ margin: 0, fontSize: '1.2em' }}>🌦️ CLIMA</h4>
-            </div>
-            <div style={{ flex: 1, minHeight: '0' }}>
-              <Line data={climateChart} options={overviewOptions} />
-            </div>
-          </div>
-
-          <div style={{ ...cardStyle, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '250px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h4 style={{ margin: 0, fontSize: '1.2em' }}>⚠️ GASES</h4>
-            </div>
-            <div style={{ flex: 1, minHeight: '0' }}>
-              <Line data={gasChart} options={overviewOptions} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 2: DETAILED HISTORY */}
-      <h2 className="section-title" style={{ textAlign: 'center' }}>LEITURAS POR SENSOR</h2>
-      
-      <div>
-        {/* TABS */}
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '30px' }}>
-          <button style={buttonStyle(activeGraph === 'temp', 'rgb(255, 99, 132)')} onClick={() => setActiveGraph('temp')}>TEMPERATURA</button>
-          <button style={buttonStyle(activeGraph === 'hum', 'rgb(54, 162, 235)')} onClick={() => setActiveGraph('hum')}>UMIDADE</button>
-          <button style={buttonStyle(activeGraph === 'mq9', 'rgb(255, 159, 64)')} onClick={() => setActiveGraph('mq9')}>GÁS (MQ9)</button>
-          <button style={buttonStyle(activeGraph === 'mq135', 'rgb(75, 192, 192)')} onClick={() => setActiveGraph('mq135')}>AR (MQ135)</button>
-        </div>
-
-        {/* BIG CHART */}
-        <div style={{ ...cardStyle, height: '500px', padding: '15px' }}>
-          <Line data={activeChartData} options={detailOptions} />
-        </div>
-      </div>
-
-    </div>
-  );
-}
+          padding: 10px
