@@ -16,6 +16,7 @@ function RecenterAutomatically({ lat, lng }) {
 }
 
 export default function Map({ data, mode }) {
+  // Icon Fix
   useEffect(() => {
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -29,33 +30,42 @@ export default function Map({ data, mode }) {
   const latestData = data && data.length > 0 ? data[0] : null;
   const center = latestData ? [latestData.latitude, latestData.longitude] : defaultCenter;
 
-  const getScaleStyle = (val, mode) => {
-    let color = '#999';
-    let radius = 10;
-    const safeVal = val || 0;
+  // --- NEW VISUAL LOGIC (Opacity based) ---
+  const getStyle = (val, mode) => {
+    let r = 0, g = 0, b = 0;
+    let max = 100;
 
+    // Define Base Colors (RGB) and Max Values
     if (mode === 'temp') {
-      const max = 40;
-      const pct = Math.min(Math.max(safeVal, 0), max) / max; 
-      const hue = (1 - pct) * 240; 
-      color = `hsl(${hue}, 100%, 50%)`; 
-      radius = 10 + (pct * 40); 
-    } 
-    else if (mode === 'hum') {
-      const max = 100;
-      const pct = Math.min(Math.max(safeVal, 0), max) / max;
-      color = `rgba(0, 0, 255, ${0.3 + (pct * 0.7)})`;
-      radius = 10 + (pct * 40);
-    }
-    else if (mode === 'mq9' || mode === 'mq135') {
-       const max = 500;
-       const pct = Math.min(safeVal, max) / max;
-       const hue = 120 - (pct * 120); 
-       color = `hsl(${hue}, 100%, 40%)`;
-       radius = 10 + (pct * 40);
+      r = 255; g = 99; b = 132; // Red
+      max = 40; // Max Temp
+    } else if (mode === 'hum') {
+      r = 54; g = 162; b = 235; // Blue
+      max = 100; // Max Humidity
+    } else if (mode === 'mq9') {
+      r = 255; g = 159; b = 64; // Orange
+      max = 500; 
+    } else if (mode === 'mq135') {
+      r = 75; g = 192; b = 192; // Teal
+      max = 500;
     }
 
-    return { color, radius };
+    // Calculate Opacity (0.1 to 1.0)
+    // We add a tiny base opacity (0.1) so 0 isn't completely invisible, 
+    // but close to it as requested.
+    const safeVal = val || 0;
+    let pct = Math.min(Math.max(safeVal, 0), max) / max;
+    
+    // Scale Logic: 
+    // Opacity: proportional to value. 
+    // Radius: Smaller dots (4px to 14px)
+    const opacity = 0.1 + (pct * 0.9); 
+    const radius = 4 + (pct * 10); 
+
+    return { 
+      color: `rgba(${r}, ${g}, ${b}, ${opacity})`, 
+      radius 
+    };
   };
 
   return (
@@ -73,7 +83,7 @@ export default function Map({ data, mode }) {
                     mode === 'hum' ? reading.humidity : 
                     mode === 'mq9' ? reading.mq9_val : reading.mq135_val;
 
-        const { color, radius } = getScaleStyle(val, mode);
+        const { color, radius } = getStyle(val, mode);
 
         return (
           <CircleMarker 
@@ -83,7 +93,7 @@ export default function Map({ data, mode }) {
             pathOptions={{ 
               stroke: false, 
               fillColor: color, 
-              fillOpacity: 0.5 
+              fillOpacity: 1 // We handle opacity in the color string itself now
             }}
           >
             <Tooltip direction="top" opacity={1}>
@@ -96,11 +106,12 @@ export default function Map({ data, mode }) {
         );
       })}
       
+      {/* Current Location Marker - SMALLER */}
       {latestData && (
         <CircleMarker 
           center={[latestData.latitude, latestData.longitude]}
-          radius={8}
-          pathOptions={{ color: '#fff', weight: 3, fillColor: '#000', fillOpacity: 1 }}
+          radius={5} // Reduced from 8
+          pathOptions={{ color: '#fff', weight: 2, fillColor: '#000', fillOpacity: 1 }}
         >
           <Popup>Localização Atual</Popup>
         </CircleMarker>
