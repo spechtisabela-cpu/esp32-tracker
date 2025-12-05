@@ -3,12 +3,11 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <head>
         <title>Monitoramento Ar - IFUSP</title>
-        {/* Fallback for Cerebri Sans since it is a paid font, using a similar geometric sans stack */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Simple geometric sans-serif to mimic Cerebri Sans */}
         <style>{`
-          @font-face {
-            font-family: 'Cerebri Sans';
-            src: local('Cerebri Sans'), local('Arial');
-          }
+          @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;600;700;800;900&display=swap');
+          body { font-family: 'Urbanist', 'Arial', sans-serif !important; }
         `}</style>
       </head>
       <body>{children}</body>
