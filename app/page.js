@@ -8,7 +8,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// Map Import - SSR False is crucial
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
   loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
@@ -34,16 +33,12 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
   
-  // Dashboard State
   const [mapMode, setMapMode] = useState('temp'); 
   const [activeGraph, setActiveGraph] = useState(null); 
-  
-  // Sensor Page State
   const [selectedDate, setSelectedDate] = useState('');
   const [dhtMode, setDhtMode] = useState('temp'); 
   const [dhtColorActive, setDhtColorActive] = useState(false); 
 
-  // Refs for Scrolling
   const sectionMedidas = useRef(null);
   const sectionMapas = useRef(null);
   const sectionLeitura = useRef(null);
@@ -54,7 +49,6 @@ export default function Home() {
       const json = await res.json();
       if (json.data) {
         setData(json.data);
-        // Set default date if not set
         if (!selectedDate && json.data.length > 0) {
            const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
@@ -87,7 +81,16 @@ export default function Home() {
     setDhtColorActive(false); 
   };
 
-  const latest = data.length > 0 ? data[0] : { temp: 0, humidity: 0, mq9_val: 0, mq135_val: 0, latitude: 0, longitude: 0 };
+  const latestRaw = data.length > 0 ? data[0] : {};
+  const latest = {
+    temp: latestRaw.temp || 0,
+    humidity: latestRaw.humidity || latestRaw.hum || 0,
+    mq9_val: latestRaw.mq9_val || latestRaw.mq9 || 0,
+    mq135_val: latestRaw.mq135_val || latestRaw.mq135 || 0,
+    latitude: latestRaw.latitude || 0, 
+    longitude: latestRaw.longitude || 0
+  };
+
   const graphData = [...data].reverse(); 
   const availableDates = [...new Set(data.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
   
@@ -106,6 +109,7 @@ export default function Home() {
     cardBg: '#faf7f2'
   };
 
+  // Background Logic
   const getPageBackground = () => {
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.12)' : 'rgba(54, 162, 235, 0.12)';
@@ -115,14 +119,14 @@ export default function Home() {
     return colors.bg;
   };
 
+  // Theme Color for Header/Sidebar
   const getThemeColor = () => {
-    if (currentView === 'home') return colors.bg; 
     if (currentView === 'dht11' && dhtColorActive) {
-        return dhtMode === 'temp' ? 'rgb(255, 230, 235)' : 'rgb(230, 240, 255)';
+        return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.25)' : 'rgba(54, 162, 235, 0.25)';
     }
-    if (currentView === 'mq9') return 'rgb(255, 240, 220)';
-    if (currentView === 'mq135') return 'rgb(220, 250, 250)';
-    return '#fff';
+    if (currentView === 'mq9') return 'rgba(255, 159, 64, 0.25)';
+    if (currentView === 'mq135') return 'rgba(75, 192, 192, 0.25)';
+    return '#fff'; // Default white for Main Page header/sidebar
   };
 
   const overviewOptions = {
@@ -171,11 +175,28 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
-        .top-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: ${getThemeColor()}; border-bottom: 2px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 2000; transition: background 0.5s; }
+        /* HEADER COLOR MATCHES SIDEBAR */
+        .top-header { 
+            position: fixed; top: 0; left: 0; right: 0; height: 60px; 
+            background: ${getThemeColor()}; 
+            border-bottom: 2px solid rgba(0,0,0,0.1); 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 0 30px; z-index: 2000; 
+            transition: background 0.5s;
+        }
+        
         .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
         .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
         
-        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; background: ${getThemeColor()}; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transform: translateX(${isMenuOpen ? '0' : '-100%'}); transition: transform 0.3s ease, background 0.5s; z-index: 1999; padding: 30px 0; }
+        .sidebar { 
+            position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; 
+            background: ${getThemeColor()}; 
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
+            transform: translateX(${isMenuOpen ? '0' : '-100%'}); 
+            transition: transform 0.3s ease, background 0.5s; 
+            z-index: 1999; padding: 30px 0; 
+        }
+        
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
         .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
@@ -186,15 +207,17 @@ export default function Home() {
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 40px; padding-bottom: 40px; }
+        /* FULL HEIGHT FOR MEDIDAS SECTION */
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
         
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
+        
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
+        
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
         .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
         .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
@@ -209,29 +232,33 @@ export default function Home() {
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
           .main-title br { display: block; }
-          .main-title { font-size: 1.8rem; margin-bottom: 30px; }
+          .main-title { font-size: 1.8rem; margin-bottom: 40px; }
           
+          /* FIX: CARDS OVERLAP & SPACING */
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 50px; 
+            row-gap: 40px; /* More space between rows */
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
-          .cards-container .reading-val { font-size: 1.4em; }
+          .cards-container .reading-val { font-size: 1.3em; } /* Smaller font for safety */
           
-          .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
+          .full-screen-section { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIXED: Map Height on Sensor Page Mobile */
-          .rounded-box-map, .sensor-layout .rounded-box:last-child { 
+          /* FIX: MAP VISIBILITY & CENTERING */
+          .rounded-box-map { 
              height: 500px !important; 
              min-height: 500px !important; 
-             display: block; width: 100%; 
+             display: block !important; 
+             width: 100% !important; 
           }
           
-          .flex-columns { flex-direction: column; align-items: center; }
+          .flex-columns { flex-direction: column; align-items: center; width: 100%; }
           .map-column { width: 100%; flex: auto; max-width: 100%; }
-          .side-graphs-col { flex-direction: row; width: 100%; } 
+          
+          .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } 
           .side-graphs-col > div { flex: 1; min-height: 250px; }
+          
           .sensor-layout { grid-template-columns: 1fr; }
         }
         @media (min-width: 901px) { .main-title br { display: none; } }
@@ -276,7 +303,8 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            <div ref={sectionMedidas} className="top-section-container">
+            {/* SECTION 1: MEDIDAS - Full Screen & Centered */}
+            <div ref={sectionMedidas} className="full-screen-section">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
                   <div style={getCardStyle(colors.temp)}>
@@ -437,8 +465,7 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* Force explicit height for mobile map visibility */}
-                        <div className="rounded-box" style={{height: '500px', minHeight: '500px', position: 'relative'}}>
+                        <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}>
                             <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3>
                             <Map data={filteredGraphData} mode={dhtMode} />
                             {renderMapScale(dhtMode)}
@@ -473,7 +500,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="rounded-box" style={{height: '500px', minHeight: '500px', position: 'relative'}}>
+                    <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>
                             MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})
                         </h3>
