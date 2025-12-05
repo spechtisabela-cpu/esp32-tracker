@@ -8,7 +8,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// Mapa Dinâmico
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false, 
   loading: () => <div style={{height:'100%', width:'100%', background:'#ddd', borderRadius:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
@@ -17,12 +16,15 @@ const Map = dynamic(() => import('./components/Map'), {
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-// --- FUNÇÃO "CAÇADORA" DE DADOS ---
+// --- ROBUST VALUE FINDER ---
+// This function hunts for the value in the object, converting strings to numbers if needed
 const getValue = (obj, keys) => {
   if (!obj) return 0;
   for (const key of keys) {
-    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
-      return Number(obj[key]);
+    const val = obj[key];
+    if (val !== undefined && val !== null && val !== "") {
+      const num = Number(val);
+      return isNaN(num) ? 0 : num;
     }
   }
   return 0;
@@ -48,6 +50,11 @@ export default function Home() {
       const res = await fetch('/api/sensors');
       const json = await res.json();
       if (json.data && Array.isArray(json.data)) {
+        // DEBUG: Check the browser console (F12) to see exactly what variable names are coming!
+        if (json.data.length > 0) {
+            console.log("Raw Data Sample:", json.data[0]); 
+        }
+        
         setRawData(json.data);
         if (!selectedDate && json.data.length > 0) {
            const sorted = [...json.data].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
@@ -73,27 +80,31 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === PREPARAÇÃO DOS DADOS CORRIGIDA ===
+  // === DATA MAPPING FIX (THE IMPORTANT PART) ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
     
-    // AQUI ESTÁ A CORREÇÃO: Usamos getValue para caçar 'lat' ou 'latitude'
-    latitude: getValue(d, ['latitude', 'lat']),
-    longitude: getValue(d, ['longitude', 'lng', 'lon']),
+    // LATITUDE / LONGITUDE
+    latitude: getValue(d, ['latitude', 'lat', 'Lat']),
+    longitude: getValue(d, ['longitude', 'lng', 'lon', 'Lng']),
     
-    // Sensores
-    temp: getValue(d, ['temp', 'temperature', 't']),
-    hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
-    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
-    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
+    // TEMPERATURE
+    temp: getValue(d, ['temp', 'temperature', 't', 'Temp']),
+    
+    // HUMIDITY (Added every possible variation)
+    hum: getValue(d, ['humidity', 'hum', 'h', 'umid', 'Humidity', 'Umid']), 
+    
+    // MQ9
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw', 'MQ9']),       
+    
+    // MQ135 (Added every possible variation)
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2', 'MQ135']) 
   }));
 
-  // Filtra dados inválidos (GPS 0,0) para não estragar o mapa
-  const validMapData = cleanData.filter(d => d.latitude !== 0 && d.longitude !== 0);
-
+  // Sort and Filter
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   
-  // Para os cards, pegamos o último dado, mesmo que o GPS seja 0
+  // Use the very latest reading for cards, even if GPS is 0
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
   
   const graphData = [...cleanData].reverse(); 
@@ -143,7 +154,7 @@ export default function Home() {
     );
   };
 
-  const getCardStyle = (color) => ({ backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), borderRadius: '15px', padding: '15px 10px', border: `2px solid ${color}`, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100px', color: colors.text, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' });
+  const getCardStyle = (color) => ({ backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), borderRadius: '15px', padding: '10px 15px', border: `2px solid ${color}`, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100px', color: colors.text, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' });
   const btnStyle = (key, color, activeKey) => ({ padding: '10px 20px', border: 'none', backgroundColor: activeKey === key ? color : '#e0e0e0', color: activeKey === key ? '#fff' : '#54504a', fontWeight: '900', cursor: 'pointer', borderRadius: '15px', fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px', boxShadow: activeKey === key ? `0 4px 10px ${color}66` : 'none' });
 
   return (
@@ -213,10 +224,7 @@ export default function Home() {
                 <div className="flex-columns">
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
-                    
-                    {/* MAPA COM DADOS VALIDADOS APENAS (Sem 0,0) */}
-                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={validMapData} mode={mapMode} />{renderMapScale()}</div>
-                    
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
