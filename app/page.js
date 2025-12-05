@@ -69,7 +69,9 @@ export default function Home() {
 
   const scrollTo = (ref) => {
     if (ref.current) {
-      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Offset for sticky header (60px) + sticky nav (40px)
+      const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
+      window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
 
@@ -103,6 +105,7 @@ export default function Home() {
     cardBg: '#faf7f2'
   };
 
+  // Background Logic
   const getPageBackground = () => {
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.12)' : 'rgba(54, 162, 235, 0.12)';
@@ -112,12 +115,17 @@ export default function Home() {
     return colors.bg;
   };
 
+  // Header Color Logic (Updated)
   const getThemeColor = () => {
+    if (currentView === 'home') return colors.bg; // Match main page background
+    
+    // Sensor pages: Solid colors (Non-transparent)
     if (currentView === 'dht11' && dhtColorActive) {
-        return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.25)' : 'rgba(54, 162, 235, 0.25)';
+        return dhtMode === 'temp' ? 'rgb(255, 230, 235)' : 'rgb(230, 240, 255)';
     }
-    if (currentView === 'mq9') return 'rgba(255, 159, 64, 0.25)';
-    if (currentView === 'mq135') return 'rgba(75, 192, 192, 0.25)';
+    if (currentView === 'mq9') return 'rgb(255, 240, 220)';
+    if (currentView === 'mq135') return 'rgb(220, 250, 250)';
+    
     return '#fff';
   };
 
@@ -167,6 +175,7 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
+        /* DYNAMIC HEADER COLOR */
         .top-header { 
             position: fixed; top: 0; left: 0; right: 0; height: 60px; 
             background: ${getThemeColor()}; 
@@ -181,7 +190,7 @@ export default function Home() {
         
         .sidebar { 
             position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; 
-            background: ${getThemeColor()}; 
+            background: #fff; 
             box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
             transform: translateX(${isMenuOpen ? '0' : '-100%'}); 
             transition: transform 0.3s ease, background 0.5s; 
@@ -189,28 +198,43 @@ export default function Home() {
         }
         
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
-        .nav-item:hover { background: rgba(255,255,255,0.5); }
+        .nav-item:hover { background: rgba(0,0,0,0.05); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
-        .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
+        .sub-item:hover { color: #000; background: rgba(0,0,0,0.05); }
         
         .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        .sub-nav-links { text-align: center; margin-bottom: 40px; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: relative; top: -20px; }
+        
+        /* STICKY SUB-NAV */
+        .sub-nav-links { 
+            text-align: center; 
+            font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
+            position: sticky; top: 60px; z-index: 1000;
+            background: ${colors.bg}; /* Match background to hide scroll content */
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
+        /* TOP SECTION: MOVED UP (Align Top) */
+        .top-section-container { 
+            min-height: 80vh; 
+            display: flex; flex-direction: column; justify-content: flex-start; /* Moved Up */
+            padding-top: 40px; 
+            padding-bottom: 40px;
+        }
+
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
-        .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 60px; line-height: 1.2; }
+        .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
         
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
         
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
-        
-        /* Flex Columns (Map/Graph layout) */
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
-        /* Dedicated class for the Map Column to control width on mobile */
         .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
         .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
 
@@ -223,32 +247,25 @@ export default function Home() {
           .content-wrapper { padding: 90px 4% 40px 4%; }
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
-          
           .main-title br { display: block; }
-          .main-title { font-size: 1.8rem; margin-bottom: 40px; }
+          .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* FIXED: Mobile Cards Grid - Prevent Overlap */
+          /* MOBILE CARDS GAP FIX */
           .cards-container { 
-            grid-template-columns: 1fr 1fr; /* Strict 2 columns */
-            gap: 10px; /* Smaller gap */
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+            row-gap: 30px; /* More space between rows */
           }
-          .cards-container > div { min-height: 100px; padding: 10px 5px; } /* Compact box */
-          .cards-container .reading-val { font-size: 1.3em; } /* Smaller font */
+          .cards-container > div { min-height: 110px; padding: 10px; }
+          .cards-container .reading-val { font-size: 1.4em; }
           
-          .full-screen-section { min-height: auto; display: block; padding: 20px 0; }
-          .rounded-box { min-height: 350px; } 
+          .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIXED: Map Visibility & Centering */
-          .flex-columns { 
-            flex-direction: column; 
-            align-items: center; /* Center everything */
-          }
-          .map-column { 
-            flex: auto; 
-            width: 100%; /* Force full width */
-            max-width: 100%;
-          }
+          /* MOBILE MAP FIX */
+          .rounded-box-map { min-height: 400px; display: block; width: 100%; }
           
+          .flex-columns { flex-direction: column; align-items: center; }
+          .map-column { width: 100%; flex: auto; max-width: 100%; }
           .side-graphs-col { flex-direction: row; width: 100%; } 
           .side-graphs-col > div { flex: 1; min-height: 250px; }
           .sensor-layout { grid-template-columns: 1fr; }
@@ -295,8 +312,8 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SECTION 1: MEDIDAS - Occupies Height, Centered */}
-            <div ref={sectionMedidas} className="full-screen-section">
+            {/* SECTION 1: MEDIDAS - Moved Up */}
+            <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
                   <div style={getCardStyle(colors.temp)}>
@@ -326,7 +343,7 @@ export default function Home() {
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}>
                       <span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span>
                     </h3>
-                    <div className="rounded-box" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}>
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}>
                       <Map data={data} mode={mapMode} />
                       {renderMapScale()}
                     </div>
@@ -344,8 +361,8 @@ export default function Home() {
                         <Line data={{
                           labels: allLabels,
                           datasets: [
-                            { label: 'Temp (°C)', data: graphData.map(d => d.temp), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 },
-                            { label: 'Umid (%)', data: graphData.map(d => d.humidity), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }
+                            { label: 'Temp 🌡️ (°C)', data: graphData.map(d => d.temp), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 },
+                            { label: 'Umid 💧 (%)', data: graphData.map(d => d.humidity), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }
                           ]
                         }} options={overviewOptions} />
                       </div>
@@ -356,8 +373,8 @@ export default function Home() {
                         <Line data={{
                           labels: allLabels,
                           datasets: [
-                            { label: 'MQ9 (PPM)', data: graphData.map(d => d.mq9_val), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 },
-                            { label: 'MQ135 (PPM)', data: graphData.map(d => d.mq135_val), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }
+                            { label: 'MQ9 🔥 (PPM)', data: graphData.map(d => d.mq9_val), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 },
+                            { label: 'MQ135 💨 (PPM)', data: graphData.map(d => d.mq135_val), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }
                           ]
                         }} options={overviewOptions} />
                       </div>
@@ -381,7 +398,7 @@ export default function Home() {
                     <Line data={{
                       labels: allLabels,
                       datasets: [{
-                        label: activeGraph === 'temp' ? 'Temperatura (°C)' : activeGraph === 'hum' ? 'Umidade (%)' : activeGraph === 'mq9' ? 'Gás MQ9 (PPM)' : 'Ar MQ135 (PPM)',
+                        label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)',
                         data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.humidity) : activeGraph === 'mq9' ? graphData.map(d => d.mq9_val) : activeGraph === 'mq135' ? graphData.map(d => d.mq135_val) : [],
                         borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135,
                         backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'),
@@ -434,8 +451,6 @@ export default function Home() {
             </div>
 
             {/* UNIFIED SENSOR LAYOUT */}
-            
-            {/* DHT11: Only shows if dhtColorActive is true */}
             {currentView === 'dht11' ? (
                 dhtColorActive ? (
                     <div className="sensor-layout">
@@ -469,7 +484,6 @@ export default function Home() {
                     <p style={{textAlign:'center', color:'#999', marginTop:'30px', fontStyle:'italic'}}>Selecione uma leitura acima (Temperatura ou Umidade) para visualizar os dados.</p>
                 )
             ) : (
-                /* MQ9 and MQ135: Show Immediately */
                 <div className="sensor-layout">
                     <div className="rounded-box">
                         <div style={{display:'flex', justifyContent:'space-between'}}>
