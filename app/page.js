@@ -8,6 +8,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
+// Map Import - SSR False is crucial
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
   loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
@@ -33,12 +34,16 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
   
+  // Dashboard State
   const [mapMode, setMapMode] = useState('temp'); 
   const [activeGraph, setActiveGraph] = useState(null); 
+  
+  // Sensor Page State
   const [selectedDate, setSelectedDate] = useState('');
   const [dhtMode, setDhtMode] = useState('temp'); 
   const [dhtColorActive, setDhtColorActive] = useState(false); 
 
+  // Refs for Scrolling
   const sectionMedidas = useRef(null);
   const sectionMapas = useRef(null);
   const sectionLeitura = useRef(null);
@@ -49,6 +54,7 @@ export default function Home() {
       const json = await res.json();
       if (json.data) {
         setData(json.data);
+        // Set default date if not set
         if (!selectedDate && json.data.length > 0) {
            const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
@@ -205,20 +211,19 @@ export default function Home() {
           .main-title br { display: block; }
           .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* MOBILE CARDS GAP FIX */
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 50px; /* INCREASED GAP AS REQUESTED */
+            row-gap: 50px; 
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
           
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* MOBILE MAP FIX */
-          .rounded-box-map { 
-             height: 500px !important; /* Force explicit height on mobile */
+          /* FIXED: Map Height on Sensor Page Mobile */
+          .rounded-box-map, .sensor-layout .rounded-box:last-child { 
+             height: 500px !important; 
              min-height: 500px !important; 
              display: block; width: 100%; 
           }
@@ -432,7 +437,8 @@ export default function Home() {
                             </div>
                         </div>
 
-                        <div className="rounded-box" style={{minHeight: '400px', position: 'relative'}}>
+                        {/* Force explicit height for mobile map visibility */}
+                        <div className="rounded-box" style={{height: '500px', minHeight: '500px', position: 'relative'}}>
                             <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3>
                             <Map data={filteredGraphData} mode={dhtMode} />
                             {renderMapScale(dhtMode)}
@@ -467,7 +473,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="rounded-box" style={{minHeight: '400px', position: 'relative'}}>
+                    <div className="rounded-box" style={{height: '500px', minHeight: '500px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>
                             MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})
                         </h3>
