@@ -8,15 +8,15 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// Import Map dynamically (Client-side only)
+// Map Import
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
   loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px'}}>Carregando Mapa...</div>
 });
 
-// --- ICONS (SVG) ---
+// --- ICONS ---
 const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="3" y1="12" x2="21" y2="12"></line>
     <line x1="3" y1="6" x2="21" y2="6"></line>
     <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -30,22 +30,34 @@ const ChevronDown = () => (
 );
 
 export default function Home() {
+  // DATA STATE
   const [data, setData] = useState([]);
-  const [mapMode, setMapMode] = useState('temp'); 
   
-  // Graph starts null (hidden) until clicked
-  const [activeGraph, setActiveGraph] = useState(null); 
-  
-  // Menu States
+  // NAVIGATION STATE: 'home', 'project', 'dht11', 'mq9', 'mq135'
+  const [currentView, setCurrentView] = useState('home'); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
+
+  // DASHBOARD STATE
+  const [mapMode, setMapMode] = useState('temp'); 
+  const [activeGraph, setActiveGraph] = useState(null); 
+
+  // SENSOR PAGE STATE
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Fetch Data
   async function fetchData() {
     try {
       const res = await fetch('/api/sensors');
       const json = await res.json();
-      if (json.data) setData(json.data); 
+      if (json.data) {
+        setData(json.data);
+        // Set default date for sensor page if empty
+        if (!selectedDate && json.data.length > 0) {
+           const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
+           setSelectedDate(latestDate);
+        }
+      } 
     } catch (e) { console.error(e); }
   }
 
@@ -55,287 +67,382 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Data Processing
-  const graphData = [...data].reverse(); 
-  const labels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  // --- DATA PROCESSING ---
   const latest = data.length > 0 ? data[0] : { temp: 0, humidity: 0, mq9_val: 0, mq135_val: 0, latitude: 0, longitude: 0 };
+  const graphData = [...data].reverse(); 
 
-  // --- CHART CONFIGURATIONS ---
-  
-  // 1. Overview (Small Side Graphs)
-  const overviewOptions = {
+  // Helper: Get unique dates for dropdown
+  const availableDates = [...new Set(data.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+
+  // Helper: Filter data by selected date
+  const getFilteredData = () => {
+    return graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
+  };
+
+  const filteredGraphData = getFilteredData();
+  const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+
+
+  // --- CHART OPTIONS ---
+  const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } }, 
-    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } }, 
-    elements: { point: { radius: 0 } } 
+    plugins: { legend: { display: false } },
+    scales: { 
+      x: { display: false }, 
+      y: { display: true, ticks: { font: { weight: 'bold', size: 11 }, color: '#54504a' } } 
+    }
   };
 
-  const climateChart = {
-    labels,
-    datasets: [
-      { label: 'Temp', data: graphData.map(d => d.temp), borderColor: 'rgb(255, 99, 132)', borderWidth: 2, tension: 0.4 },
-      { label: 'Umid', data: graphData.map(d => d.humidity), borderColor: 'rgb(54, 162, 235)', borderWidth: 2, tension: 0.4 },
-    ],
-  };
-
-  const gasChart = {
-    labels,
-    datasets: [
-      { label: 'MQ9', data: graphData.map(d => d.mq9_val), borderColor: 'rgb(255, 159, 64)', borderWidth: 2, tension: 0.4 },
-      { label: 'MQ135', data: graphData.map(d => d.mq135_val), borderColor: 'rgb(75, 192, 192)', borderWidth: 2, tension: 0.4 },
-    ],
-  };
-
-  // 2. Detailed (Bottom Graph)
   const detailOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { 
-      legend: { labels: { font: { size: 14, weight: 'bold' } } } 
+    ...commonOptions,
+    scales: { 
+      x: { display: true, ticks: { color: '#54504a' } }, 
+      y: { display: true, ticks: { color: '#54504a', font: { weight: 'bold' } } } 
     },
-    scales: { y: { beginAtZero: false } }
+    plugins: { legend: { display: true, labels: { color: '#54504a', font: { weight: 'bold' } } } }
   };
 
-  const datasets = {
-    temp: { label: 'Temperatura (°C)', data: graphData.map(d => d.temp), color: 'rgb(255, 99, 132)' },
-    hum: { label: 'Umidade (%)', data: graphData.map(d => d.humidity), color: 'rgb(54, 162, 235)' },
-    mq9: { label: 'Gás Combustível - MQ9 (PPM)', data: graphData.map(d => d.mq9_val), color: 'rgb(255, 159, 64)' },
-    mq135: { label: 'Qualidade do Ar - MQ135', data: graphData.map(d => d.mq135_val), color: 'rgb(75, 192, 192)' }
+  // --- STYLES ---
+  const colors = {
+    temp: 'rgb(255, 99, 132)',
+    hum: 'rgb(54, 162, 235)',
+    mq9: 'rgb(255, 159, 64)',
+    mq135: 'rgb(75, 192, 192)',
+    text: '#54504a',
+    bg: '#f2efeb',
+    cardBg: '#faf7f2'
   };
 
-  const activeChartData = activeGraph ? {
-    labels,
-    datasets: [{
-      label: datasets[activeGraph].label,
-      data: datasets[activeGraph].data,
-      borderColor: datasets[activeGraph].color,
-      backgroundColor: datasets[activeGraph].color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
-      fill: true,
-      tension: 0.3,
-      pointRadius: 3
-    }]
-  } : null;
-
-  // --- STYLES HELPER ---
-  
-  // Helper to make background lighter version of the color
-  const getCardStyle = (colorRgb) => ({
-    backgroundColor: colorRgb.replace('rgb', 'rgba').replace(')', ', 0.15)'), 
-    borderRadius: '0px', // SQUARED as requested
-    padding: '20px 10px',     
-    border: `2px solid ${colorRgb}`,
+  const getCardStyle = (color) => ({
+    backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), 
+    borderRadius: '15px', // Rounded
+    padding: '15px 10px',     
+    border: `2px solid ${color}`,
     textAlign: 'center',
     height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '140px',
-    transition: 'transform 0.2s',
-    cursor: 'default'
+    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+    minHeight: '100px', // Smaller Height
+    color: colors.text,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
   });
 
   const btnStyle = (key, color) => ({
-    padding: '12px 25px',
-    border: activeGraph === key ? `2px solid ${color}` : '1px solid #ccc',
-    backgroundColor: activeGraph === key ? color : '#fff',
-    color: activeGraph === key ? '#fff' : '#555',
-    fontWeight: 'bold',
+    padding: '10px 20px',
+    border: 'none',
+    backgroundColor: activeGraph === key ? color : '#e0e0e0',
+    color: activeGraph === key ? '#fff' : '#54504a',
+    fontWeight: '900',
     cursor: 'pointer',
-    borderRadius: '4px',
+    borderRadius: '15px', // Rounded buttons
     fontSize: '0.9rem',
     transition: 'all 0.2s',
-    textTransform: 'uppercase'
+    margin: '0 5px',
+    boxShadow: activeGraph === key ? `0 4px 10px ${color}66` : 'none',
   });
+
+  // --- NAVIGATION HANDLER ---
+  const navigate = (view) => {
+    setCurrentView(view);
+    setIsMenuOpen(false);
+  };
 
   return (
     <div className="main-container">
       <style jsx global>{`
-        body { margin: 0; background-color: #f2efeb; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: #333; }
+        body { margin: 0; background-color: ${colors.bg}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; }
         
-        /* HEADER STRIP */
+        /* HEADER */
         .top-header {
-          position: fixed; top: 0; left: 0; right: 0; height: 50px;
-          background: #fff; border-bottom: 1px solid #ddd;
-          display: flex; align-items: center; padding: 0 20px;
-          z-index: 2000; font-size: 0.85rem; font-weight: 700; color: #555;
+          position: fixed; top: 0; left: 0; right: 0; height: 60px;
+          background: ${colors.bg}; /* Match page background */
+          border-bottom: 2px solid rgba(0,0,0,0.1);
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 0 30px; z-index: 2000;
         }
+        .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
+        .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
 
-        .menu-btn { cursor: pointer; margin-right: 15px; display: flex; align-items: center; }
-        .menu-btn:hover { color: #000; }
-
-        /* SIDEBAR */
+        /* MENU */
         .sidebar {
-          position: fixed; top: 50px; left: 0; bottom: 0; width: 260px;
-          background: #fff; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+          position: fixed; top: 60px; left: 0; bottom: 0; width: 280px;
+          background: #fff; box-shadow: 4px 0 15px rgba(0,0,0,0.05);
           transform: translateX(${isMenuOpen ? '0' : '-100%'});
-          transition: transform 0.3s ease; z-index: 1999;
-          padding: 20px 0;
+          transition: transform 0.3s ease; z-index: 1999; padding: 30px 0;
         }
-        .nav-item { padding: 15px 25px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #333; display: flex; justify-content: space-between; }
-        .nav-item:hover { background: #f9f9f9; }
-        .sub-nav { background: #fbfbfb; }
-        .sub-item { padding: 12px 40px; border-bottom: 1px solid #f5f5f5; font-size: 0.85rem; color: #666; display: block; text-decoration: none; }
-        .sub-item:hover { color: #000; background: #f0f0f0; }
+        .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
+        .nav-item:hover { background: #f5f5f5; }
+        .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
+        .sub-item:hover { color: #000; background: #fafafa; }
 
-        /* MAIN CONTENT */
+        /* LAYOUT */
         .content-wrapper { padding: 90px 8% 60px 8%; max-width: 1400px; margin: 0 auto; }
         
-        .main-title { 
-          text-align: center; font-size: 2.5rem; font-weight: 900; 
-          margin-bottom: 40px; letter-spacing: -1px; color: #111; 
+        .section-title { font-size: 2.2em; font-weight: 900; margin-bottom: 30px; color: ${colors.text}; }
+
+        /* SEPARATORS - Softened */
+        .soft-line {
+          height: 2px;
+          border: 0;
+          background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0));
+          margin: 60px 0;
         }
 
-        .cards-grid {
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 20px; margin-bottom: 40px;
+        /* CARDS & GRAPHS */
+        .rounded-box {
+          background-color: ${colors.cardBg}; 
+          border-radius: 20px; 
+          border: 1px solid rgba(0,0,0,0.05);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+          padding: 20px;
         }
         
-        .bold-separator {
-          border: 0; border-top: 3px solid #000; 
-          margin: 50px 0; opacity: 1;
-        }
+        .bold-text { font-weight: 900 !important; }
 
-        .reading-val { font-size: 2.5em; font-weight: 800; line-height: 1.1; margin: 5px 0; }
-        .reading-label { font-size: 0.9em; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-
-        /* MIDDLE SECTION */
-        .dashboard-mid { display: flex; gap: 30px; height: 500px; }
-        .map-box { flex: 3; background: #fff; padding: 10px; border: 2px solid #ddd; position: relative; }
-        .graphs-box { flex: 2; display: flex; flexDirection: column; gap: 15px; }
-        .mini-graph { flex: 1; background: #fff; padding: 15px; border: 2px solid #ddd; }
-
-        @media (max-width: 900px) {
-          .dashboard-mid { flex-direction: column; height: auto; }
-          .map-box { height: 400px; }
-        }
+        /* SENSOR PAGE GRID */
+        .sensor-page-grid { display: flex; gap: 40px; margin-top: 30px; }
+        .sensor-left { flex: 2; }
+        .sensor-right { flex: 1; background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #eee; height: fit-content; }
       `}</style>
       
-      {/* 1. HEADER (Top Strip) */}
+      {/* 1. HEADER */}
       <div className="top-header">
-        <div className="menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <div style={{cursor: 'pointer', zIndex: 2001}} onClick={() => setIsMenuOpen(!isMenuOpen)}>
           <MenuIcon />
         </div>
-        <span>MONITORAMENTO DA QUALIDADE DO AR - LAB. VI - IFUSP - 2025</span>
+        <div className="header-title">MONITORAMENTO DA QUALIDADE DO AR</div>
+        <div className="header-right">LAB. VI | IFUSP</div>
       </div>
 
-      {/* SIDEBAR NAVIGATION */}
+      {/* SIDEBAR */}
       <div className="sidebar">
-        <div className="nav-item">O PROJETO</div>
+        <div className="nav-item" onClick={() => navigate('home')}>HOME</div>
+        <div className="nav-item" onClick={() => navigate('project')}>O PROJETO</div>
         
         <div className="nav-item" onClick={() => setIsSensorsSubmenuOpen(!isSensorsSubmenuOpen)}>
           OS SENSORES <ChevronDown />
         </div>
         {isSensorsSubmenuOpen && (
-          <div className="sub-nav">
-            <a href="#" className="sub-item">DHT11 (Temp/Umid)</a>
-            <a href="#" className="sub-item">MQ135 (Qualidade Ar)</a>
-            <a href="#" className="sub-item">MQ9 (Gás Combustível)</a>
+          <div style={{background: '#fcfcfc'}}>
+            <span className="sub-item" onClick={() => navigate('dht11')}>DHT11 (Temp/Umid)</span>
+            <span className="sub-item" onClick={() => navigate('mq9')}>MQ9 (Gás)</span>
+            <span className="sub-item" onClick={() => navigate('mq135')}>MQ135 (Ar)</span>
           </div>
         )}
       </div>
 
-      {/* CONTENT OVERLAY (Closes menu when clicking outside) */}
-      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} style={{position:'fixed', top:50, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.3)', zIndex:1998}} />}
+      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} style={{position:'fixed', top:60, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.2)', zIndex:1998}} />}
 
       <div className="content-wrapper">
         
-        {/* TITLE */}
-        <h1 className="main-title">MONITORAMENTO DA QUALIDADE DO AR</h1>
+        {/* ================= VIEW: HOME ================= */}
+        {currentView === 'home' && (
+          <>
+            <h1 style={{textAlign: 'center', fontSize: '2.5rem', fontWeight: '900', marginBottom: '40px'}}>
+              MONITORAMENTO DA QUALIDADE DO AR
+            </h1>
 
-        {/* 2. SQUARED ICONS (Cards) */}
-        <div className="cards-grid">
-          <div style={getCardStyle('rgb(255, 99, 132)')}>
-            <div className="reading-label" style={{color: 'rgb(255, 99, 132)'}}>🌡️ Temperatura</div>
-            <div className="reading-val" style={{color: 'rgb(255, 99, 132)'}}>{latest.temp.toFixed(2)}°C</div>
-          </div>
-
-          <div style={getCardStyle('rgb(54, 162, 235)')}>
-            <div className="reading-label" style={{color: 'rgb(54, 162, 235)'}}>💧 Umidade</div>
-            <div className="reading-val" style={{color: 'rgb(54, 162, 235)'}}>{latest.humidity.toFixed(2)}%</div>
-          </div>
-
-          <div style={getCardStyle('rgb(255, 159, 64)')}>
-            <div className="reading-label" style={{color: 'rgb(255, 159, 64)'}}>🔥 Gás (MQ9)</div>
-            <div className="reading-val" style={{color: 'rgb(255, 159, 64)'}}>{latest.mq9_val.toFixed(2)}</div>
-          </div>
-
-          <div style={getCardStyle('rgb(75, 192, 192)')}>
-            <div className="reading-label" style={{color: 'rgb(75, 192, 192)'}}>💨 Ar (MQ135)</div>
-            <div className="reading-val" style={{color: 'rgb(75, 192, 192)'}}>{latest.mq135_val.toFixed(2)}</div>
-          </div>
-        </div>
-
-        {/* BOLD SEPARATOR 1 */}
-        <hr className="bold-separator" />
-
-        {/* 3. MIDDLE SECTION: MAP (Left) & GRAPHS (Right) */}
-        <div className="dashboard-mid">
-          
-          {/* MAP */}
-          <div className="map-box">
-             {/* Simple Map Controls inside the map box */}
-             <div style={{position: 'absolute', top: 15, right: 15, zIndex: 1000, background: 'rgba(255,255,255,0.9)', padding: '5px', borderRadius: '5px'}}>
-               <select onChange={(e) => setMapMode(e.target.value)} value={mapMode} style={{padding: '5px', border: '1px solid #ccc'}}>
-                 <option value="temp">🌡️ Temperatura</option>
-                 <option value="hum">💧 Umidade</option>
-                 <option value="mq9">🔥 MQ9</option>
-                 <option value="mq135">💨 MQ135</option>
-               </select>
-             </div>
-             <Map data={data} mode={mapMode} />
-          </div>
-
-          {/* STACKED GRAPHS */}
-          <div className="graphs-box">
-            <div className="mini-graph">
-              <h4 style={{margin: '0 0 10px 0', fontSize:'0.9rem', color: '#666'}}>CLIMA (TEMP / UMID)</h4>
-              <div style={{height: '180px'}}>
-                <Line data={climateChart} options={overviewOptions} />
+            {/* KPI CARDS - RECTANGLES, ROUNDED, LIGHTER BG */}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '50px'}}>
+              <div style={getCardStyle(colors.temp)}>
+                <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Temperatura</div>
+                <div style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.temp.toFixed(2)}°C</div>
+              </div>
+              <div style={getCardStyle(colors.hum)}>
+                <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Umidade</div>
+                <div style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.humidity.toFixed(2)}%</div>
+              </div>
+              <div style={getCardStyle(colors.mq9)}>
+                <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Gás (MQ9)</div>
+                <div style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9_val.toFixed(2)}</div>
+              </div>
+              <div style={getCardStyle(colors.mq135)}>
+                <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Ar (MQ135)</div>
+                <div style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq135_val.toFixed(2)}</div>
               </div>
             </div>
-            <div className="mini-graph">
-              <h4 style={{margin: '0 0 10px 0', fontSize:'0.9rem', color: '#666'}}>GASES (MQ9 / MQ135)</h4>
-              <div style={{height: '180px'}}>
-                <Line data={gasChart} options={overviewOptions} />
+
+            <hr className="soft-line" />
+
+            {/* MIDDLE: MAP (Left) & GRAPHS (Right) - 2 COLUMNS */}
+            <div style={{display: 'flex', gap: '30px', flexWrap: 'wrap'}}>
+              
+              {/* LEFT: MAP */}
+              <div style={{flex: '1 1 500px', minHeight: '550px', display: 'flex', flexDirection: 'column'}}>
+                <h3 className="bold-text" style={{margin: '0 0 15px 0', fontSize: '1.4em'}}>LOCAL: SÃO PAULO - SP (IFUSP)</h3>
+                <div className="rounded-box" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff'}}>
+                  <Map data={data} mode={mapMode} />
+                </div>
+                {/* Simple Map Controls */}
+                <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
+                  <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'temp' ? colors.temp : '#fff', color: mapMode === 'temp' ? '#fff' : '#555'}} onClick={() => setMapMode('temp')}>Temp</button>
+                  <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'hum' ? colors.hum : '#fff', color: mapMode === 'hum' ? '#fff' : '#555'}} onClick={() => setMapMode('hum')}>Umid</button>
+                  <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'mq9' ? colors.mq9 : '#fff', color: mapMode === 'mq9' ? '#fff' : '#555'}} onClick={() => setMapMode('mq9')}>Gás</button>
+                </div>
+              </div>
+
+              {/* RIGHT: GRAPHS (CLIMA ON TOP, GASES BELOW) */}
+              <div style={{flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: '30px'}}>
+                
+                <div className="rounded-box" style={{flex: 1}}>
+                  <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>CLIMA</h3>
+                  <div style={{height: '200px'}}>
+                    <Line data={{
+                      labels: labels,
+                      datasets: [
+                        { label: 'Temp', data: graphData.map(d => d.temp), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 },
+                        { label: 'Umid', data: graphData.map(d => d.humidity), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }
+                      ]
+                    }} options={commonOptions} />
+                  </div>
+                </div>
+
+                <div className="rounded-box" style={{flex: 1}}>
+                  <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>GASES</h3>
+                  <div style={{height: '200px'}}>
+                    <Line data={{
+                      labels: labels,
+                      datasets: [
+                        { label: 'MQ9', data: graphData.map(d => d.mq9_val), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 },
+                        { label: 'MQ135', data: graphData.map(d => d.mq135_val), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }
+                      ]
+                    }} options={commonOptions} />
+                  </div>
+                </div>
+
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* BOLD SEPARATOR 2 */}
-        <hr className="bold-separator" />
+            <hr className="soft-line" />
 
-        {/* 4. LEITURA POR SENSOR (Click to Open) */}
-        <div style={{textAlign: 'center', minHeight: '400px'}}>
-          <h2 style={{fontSize: '1.8rem', fontWeight: '900', marginBottom: '30px', textTransform: 'uppercase'}}>LEITURA POR SENSOR</h2>
-          
-          <div style={{display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '30px'}}>
-            <button style={btnStyle('temp', 'rgb(255, 99, 132)')} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>Temperatura</button>
-            <button style={btnStyle('hum', 'rgb(54, 162, 235)')} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>Umidade</button>
-            <button style={btnStyle('mq9', 'rgb(255, 159, 64)')} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>Gás (MQ9)</button>
-            <button style={btnStyle('mq135', 'rgb(75, 192, 192)')} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>Ar (MQ135)</button>
-          </div>
+            {/* LEITURA POR SENSOR */}
+            <div style={{textAlign: 'center'}}>
+              <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
+              
+              <div style={{marginBottom: '30px'}}>
+                <button style={btnStyle('temp', colors.temp)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button>
+                <button style={btnStyle('hum', colors.hum)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button>
+                <button style={btnStyle('mq9', colors.mq9)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button>
+                <button style={btnStyle('mq135', colors.mq135)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button>
+              </div>
 
-          {/* GRAPH CONTAINER - Only shows if activeGraph is not null */}
-          <div style={{
-            background: '#fff', 
-            padding: '20px', 
-            border: '2px solid #ddd', 
-            height: '400px', 
-            display: activeGraph ? 'block' : 'none', // Logic: Only open if clicked
-            animation: 'fadeIn 0.5s'
-          }}>
-            {activeGraph && <Line data={activeChartData} options={detailOptions} />}
-          </div>
-
-          {!activeGraph && (
-            <div style={{color: '#999', marginTop: '50px', fontStyle: 'italic'}}>
-              Selecione um botão acima para visualizar o gráfico histórico detalhado.
+              {activeGraph && (
+                 <div className="rounded-box" style={{background: '#fff', height: '400px'}}>
+                    <Line data={{
+                      labels: labels,
+                      datasets: [{
+                        label: 'Leitura',
+                        data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.humidity) : activeGraph === 'mq9' ? graphData.map(d => d.mq9_val) : graphData.map(d => d.mq135_val),
+                        borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135,
+                        backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'),
+                        fill: true, tension: 0.3
+                      }]
+                    }} options={detailOptions} />
+                 </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+
+        {/* ================= VIEW: O PROJETO ================= */}
+        {currentView === 'project' && (
+          <div className="rounded-box" style={{background: '#fff', minHeight: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+            <h2 className="bold-text">EM BREVE</h2>
+          </div>
+        )}
+
+        {/* ================= VIEW: SENSOR PAGES (Generic) ================= */}
+        {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
+          <div>
+            <h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase'}}>
+              SENSOR: {currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}
+            </h1>
+            
+            {/* DATE SELECTOR */}
+            <div style={{margin: '20px 0'}}>
+              <label className="bold-text" style={{marginRight: '10px'}}>SELECIONAR DATA:</label>
+              <select 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}
+              >
+                {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
+              </select>
+            </div>
+
+            <div className="sensor-page-grid">
+              
+              {/* LEFT: GRAPHS */}
+              <div className="sensor-left">
+                {currentView === 'dht11' && (
+                  <>
+                     <div className="rounded-box" style={{marginBottom: '20px', background: '#fff'}}>
+                        <div style={{display:'flex', justifyContent:'space-between'}}>
+                          <h3 className="bold-text">TEMPERATURA (°C)</h3>
+                          <h3 className="bold-text" style={{color: colors.temp}}>Última: {latest.temp.toFixed(2)}°C</h3>
+                        </div>
+                        <div style={{height: '250px'}}>
+                          <Line data={{
+                             labels: filteredLabels,
+                             datasets: [{ label: 'Temperatura', data: filteredGraphData.map(d => d.temp), borderColor: colors.temp, tension: 0.3 }]
+                          }} options={detailOptions} />
+                        </div>
+                     </div>
+                     <div className="rounded-box" style={{background: '#fff'}}>
+                        <div style={{display:'flex', justifyContent:'space-between'}}>
+                          <h3 className="bold-text">UMIDADE (%)</h3>
+                          <h3 className="bold-text" style={{color: colors.hum}}>Última: {latest.humidity.toFixed(2)}%</h3>
+                        </div>
+                        <div style={{height: '250px'}}>
+                          <Line data={{
+                             labels: filteredLabels,
+                             datasets: [{ label: 'Umidade', data: filteredGraphData.map(d => d.humidity), borderColor: colors.hum, tension: 0.3 }]
+                          }} options={detailOptions} />
+                        </div>
+                     </div>
+                  </>
+                )}
+                
+                {currentView === 'mq9' && (
+                   <div className="rounded-box" style={{background: '#fff'}}>
+                      <div style={{display:'flex', justifyContent:'space-between'}}>
+                        <h3 className="bold-text">GÁS COMBUSTÍVEL (PPM)</h3>
+                        <h3 className="bold-text" style={{color: colors.mq9}}>Última: {latest.mq9_val.toFixed(2)}</h3>
+                      </div>
+                      <div style={{height: '300px'}}>
+                        <Line data={{
+                           labels: filteredLabels,
+                           datasets: [{ label: 'MQ9', data: filteredGraphData.map(d => d.mq9_val), borderColor: colors.mq9, fill: true, backgroundColor: 'rgba(255, 159, 64, 0.2)', tension: 0.3 }]
+                        }} options={detailOptions} />
+                      </div>
+                   </div>
+                )}
+
+                {currentView === 'mq135' && (
+                   <div className="rounded-box" style={{background: '#fff'}}>
+                      <div style={{display:'flex', justifyContent:'space-between'}}>
+                        <h3 className="bold-text">QUALIDADE DO AR</h3>
+                        <h3 className="bold-text" style={{color: colors.mq135}}>Última: {latest.mq135_val.toFixed(2)}</h3>
+                      </div>
+                      <div style={{height: '300px'}}>
+                        <Line data={{
+                           labels: filteredLabels,
+                           datasets: [{ label: 'MQ135', data: filteredGraphData.map(d => d.mq135_val), borderColor: colors.mq135, fill: true, backgroundColor: 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]
+                        }} options={detailOptions} />
+                      </div>
+                   </div>
+                )}
+              </div>
+
+              {/* RIGHT: DESCRIPTION */}
+              <div className="sensor-right">
+                <h3 className="bold-text">SOBRE O SENSOR</h3>
+                <p style={{lineHeight: '1.6'}}>Descrição do sensor em breve.</p>
+              </div>
+
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
