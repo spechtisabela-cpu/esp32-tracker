@@ -27,6 +27,18 @@ const ChevronDown = () => (
   </svg>
 );
 
+// --- FUNÇÃO AUXILIAR PARA ENCONTRAR DADOS ---
+// Tenta encontrar o valor em várias chaves possíveis
+const getValue = (obj, possibleKeys) => {
+  if (!obj) return 0;
+  for (const key of possibleKeys) {
+    if (obj[key] !== undefined && obj[key] !== null) {
+      return Number(obj[key]); // Garante que é número
+    }
+  }
+  return 0;
+};
+
 export default function Home() {
   const [rawData, setRawData] = useState([]);
   const [currentView, setCurrentView] = useState('home'); 
@@ -49,6 +61,10 @@ export default function Home() {
       const json = await res.json();
       if (json.data) {
         setRawData(json.data);
+        
+        // --- DEBUG: ISSO VAI MOSTRAR NO CONSOLE O QUE ESTÁ CHEGANDO ---
+        console.log("Última Leitura Recebida:", json.data[0]); 
+        
         if (!selectedDate && json.data.length > 0) {
            const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
@@ -70,36 +86,22 @@ export default function Home() {
     }
   };
 
-  const handleDhtChange = (mode) => {
-    setDhtMode(mode);
-    setDhtColorActive(true); 
-  };
+  const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
+  const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  const navigate = (view) => {
-    setCurrentView(view);
-    setIsMenuOpen(false);
-    setDhtColorActive(false); 
-  };
-
-  // --- 1. DATA NORMALIZATION (FIX FOR MISSING VALUES) ---
-  // This creates a clean list where keys are always consistent
+  // --- PREPARAÇÃO DOS DADOS (BLINDADA) ---
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
-    latitude: d.latitude,
-    longitude: d.longitude,
-    // Accept 'temp'
-    temp: d.temp ?? 0,
-    // Accept 'humidity' OR 'hum'
-    hum: d.humidity ?? d.hum ?? 0, 
-    // Accept 'mq9_val' OR 'mq9'
-    mq9: d.mq9_val ?? d.mq9 ?? 0,
-    // Accept 'mq135_val' OR 'mq135' OR 'co2' (fallback)
-    mq135: d.mq135_val ?? d.mq135 ?? d.co2 ?? 0 
+    latitude: Number(d.latitude || 0),
+    longitude: Number(d.longitude || 0),
+    // Procura por TODAS as variações de nome possíveis
+    temp: getValue(d, ['temp', 'temperature', 't']),
+    hum: getValue(d, ['humidity', 'hum', 'umidade', 'h']),
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2', 'mq135_co'])
   }));
 
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
-  
-  // Use cleanData for graphs so they don't break
   const graphData = [...cleanData].reverse(); 
   
   const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
@@ -107,8 +109,6 @@ export default function Home() {
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
-  
-  // Labels for main graphs (uses all data)
   const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const colors = {
@@ -197,11 +197,27 @@ export default function Home() {
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        .sub-nav-links { text-align: center; margin-bottom: 40px; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        
+        .sub-nav-links { 
+            text-align: center; 
+            font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
+            position: sticky; top: 60px; z-index: 1000; 
+            background: ${colors.bg}; 
+            padding: 15px 0; margin-bottom: 20px; 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 40px; padding-bottom: 40px; }
+        /* FIRST SECTION (MEDIDAS) - MOVED UP AS REQUESTED */
+        .top-section-container { 
+            min-height: 80vh; 
+            display: flex; flex-direction: column; 
+            justify-content: flex-start; /* Aligned Top */
+            padding-top: 60px;           /* Less padding to be higher */
+            padding-bottom: 40px; 
+        }
+
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
@@ -225,28 +241,26 @@ export default function Home() {
           .content-wrapper { padding: 90px 4% 40px 4%; }
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
-          
           .main-title br { display: block; }
           .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* FIX: Extra Spacing for Mobile Cards */
+          /* MOBILE CARDS SPACING */
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 50px; /* More space */
+            row-gap: 50px; 
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
           
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIX: Main Map Visiblity Mobile */
+          /* MAIN MAP MOBILE FIX */
           .rounded-box-map { 
              height: 500px !important; 
              min-height: 500px !important; 
              display: block !important; 
-             width: 100% !important;
-             margin-bottom: 30px;
+             width: 100% !important; 
           }
           
           .flex-columns { flex-direction: column; align-items: center; width: 100%; }
@@ -415,7 +429,7 @@ export default function Home() {
               <p style={{lineHeight: '1.6', margin: 0}}>Descrição técnica e funcionamento do sensor em breve.</p>
             </div>
             
-            {/* DHT BUTTONS */}
+            {/* DHT BUTTONS OUTSIDE BOX */}
             {currentView === 'dht11' && (
                 <div style={{marginTop: '20px', marginBottom: '30px', display: 'flex', justifyContent: 'center'}}>
                     <button style={btnStyle('temp', colors.temp, dhtColorActive ? dhtMode : null)} onClick={() => handleDhtChange('temp')}>TEMPERATURA</button>
