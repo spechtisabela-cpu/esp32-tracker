@@ -8,16 +8,39 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
+// Import Map dynamically (Client-side only)
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
-  loading: () => <p>Carregando Mapa...</p>
+  loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px'}}>Carregando Mapa...</div>
 });
+
+// --- ICONS (SVG) ---
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+);
+
+const ChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"></polyline>
+  </svg>
+);
 
 export default function Home() {
   const [data, setData] = useState([]);
   const [mapMode, setMapMode] = useState('temp'); 
-  const [activeGraph, setActiveGraph] = useState('temp'); 
+  
+  // Graph starts null (hidden) until clicked
+  const [activeGraph, setActiveGraph] = useState(null); 
+  
+  // Menu States
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
 
+  // Fetch Data
   async function fetchData() {
     try {
       const res = await fetch('/api/sensors');
@@ -32,52 +55,44 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Data Processing
   const graphData = [...data].reverse(); 
   const labels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
   const latest = data.length > 0 ? data[0] : { temp: 0, humidity: 0, mq9_val: 0, mq135_val: 0, latitude: 0, longitude: 0 };
 
-  // --- CHART CONFIG ---
+  // --- CHART CONFIGURATIONS ---
   
-  // 1. Overview Options (Side Graphs)
+  // 1. Overview (Small Side Graphs)
   const overviewOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { 
-      legend: { 
-        display: true, // LEGEND IS BACK!
-        position: 'top',
-        labels: { boxWidth: 10, font: { size: 10 } } // Keep it small/clean
-      } 
-    }, 
-    scales: { x: { display: false } }, 
+    plugins: { legend: { display: false } }, 
+    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } }, 
     elements: { point: { radius: 0 } } 
   };
 
   const climateChart = {
     labels,
     datasets: [
-      { label: 'Temp (°C)', data: graphData.map(d => d.temp), borderColor: 'rgb(255, 99, 132)', borderWidth: 2, tension: 0.4 },
-      { label: 'Umid (%)', data: graphData.map(d => d.humidity), borderColor: 'rgb(54, 162, 235)', borderWidth: 2, tension: 0.4 },
+      { label: 'Temp', data: graphData.map(d => d.temp), borderColor: 'rgb(255, 99, 132)', borderWidth: 2, tension: 0.4 },
+      { label: 'Umid', data: graphData.map(d => d.humidity), borderColor: 'rgb(54, 162, 235)', borderWidth: 2, tension: 0.4 },
     ],
   };
 
   const gasChart = {
     labels,
     datasets: [
-      { label: 'MQ9 (Gás)', data: graphData.map(d => d.mq9_val), borderColor: 'rgb(255, 159, 64)', backgroundColor: 'rgba(255, 159, 64, 0.2)', fill: true, tension: 0.4 },
-      { label: 'MQ135 (Ar)', data: graphData.map(d => d.mq135_val), borderColor: 'rgb(75, 192, 192)', borderWidth: 2, tension: 0.4 },
+      { label: 'MQ9', data: graphData.map(d => d.mq9_val), borderColor: 'rgb(255, 159, 64)', borderWidth: 2, tension: 0.4 },
+      { label: 'MQ135', data: graphData.map(d => d.mq135_val), borderColor: 'rgb(75, 192, 192)', borderWidth: 2, tension: 0.4 },
     ],
   };
 
-  // 2. Detailed Options (Big Graph)
+  // 2. Detailed (Bottom Graph)
   const detailOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { 
-      legend: { 
-        display: true, // LEGEND IS BACK!
-        labels: { font: { size: 14, weight: 'bold' } }
-      } 
+      legend: { labels: { font: { size: 14, weight: 'bold' } } } 
     },
     scales: { y: { beginAtZero: false } }
   };
@@ -89,7 +104,7 @@ export default function Home() {
     mq135: { label: 'Qualidade do Ar - MQ135', data: graphData.map(d => d.mq135_val), color: 'rgb(75, 192, 192)' }
   };
 
-  const activeChartData = {
+  const activeChartData = activeGraph ? {
     labels,
     datasets: [{
       label: datasets[activeGraph].label,
@@ -100,212 +115,229 @@ export default function Home() {
       tension: 0.3,
       pointRadius: 3
     }]
-  };
+  } : null;
 
   // --- STYLES HELPER ---
-  const getReadingCardStyle = (color) => ({
-    backgroundColor: '#fff', 
-    borderRadius: '15px',     
-    padding: '10px 15px',     
-    border: `3px solid ${color}`,
-    boxShadow: `0 4px 10px ${color}22`, 
+  
+  // Helper to make background lighter version of the color
+  const getCardStyle = (colorRgb) => ({
+    backgroundColor: colorRgb.replace('rgb', 'rgba').replace(')', ', 0.15)'), 
+    borderRadius: '0px', // SQUARED as requested
+    padding: '20px 10px',     
+    border: `2px solid ${colorRgb}`,
     textAlign: 'center',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '100px'        
+    minHeight: '140px',
+    transition: 'transform 0.2s',
+    cursor: 'default'
   });
 
-  const cardStyle = {
-    backgroundColor: '#fff', 
-    borderRadius: '20px', 
-    padding: '25px', 
-    boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-    textAlign: 'center',
-    height: '100%'
-  };
-
-  const buttonStyle = (isActive, color) => ({
-    padding: '10px 20px',
-    margin: '5px',
-    border: 'none',
-    borderRadius: '25px',
-    cursor: 'pointer',
+  const btnStyle = (key, color) => ({
+    padding: '12px 25px',
+    border: activeGraph === key ? `2px solid ${color}` : '1px solid #ccc',
+    backgroundColor: activeGraph === key ? color : '#fff',
+    color: activeGraph === key ? '#fff' : '#555',
     fontWeight: 'bold',
-    fontSize: '0.9em',
-    backgroundColor: isActive ? color : '#e0e0e0',
-    color: isActive ? '#fff' : '#666',
-    transition: 'all 0.3s ease',
-    boxShadow: isActive ? `0 4px 10px ${color}66` : 'none',
-    flex: '1 1 auto', 
-    minWidth: '120px'
+    cursor: 'pointer',
+    borderRadius: '4px',
+    fontSize: '0.9rem',
+    transition: 'all 0.2s',
+    textTransform: 'uppercase'
   });
 
   return (
     <div className="main-container">
       <style jsx global>{`
-        body { margin: 0; background-color: #f2efeb; font-family: 'Cerebri Sans', 'Arial', sans-serif; }
+        body { margin: 0; background-color: #f2efeb; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: #333; }
         
-        .main-container {
-          padding: 60px 8%;
-          min-height: 100vh;
-          color: #333;
+        /* HEADER STRIP */
+        .top-header {
+          position: fixed; top: 0; left: 0; right: 0; height: 50px;
+          background: #fff; border-bottom: 1px solid #ddd;
+          display: flex; align-items: center; padding: 0 20px;
+          z-index: 2000; font-size: 0.85rem; font-weight: 700; color: #555;
         }
 
-        .title-main {
-          margin: 0;
-          font-size: 3.8em;
-          font-weight: 900;
-          color: #1a1a1a;
-          letter-spacing: -2px;
-          line-height: 1.1;
+        .menu-btn { cursor: pointer; margin-right: 15px; display: flex; align-items: center; }
+        .menu-btn:hover { color: #000; }
+
+        /* SIDEBAR */
+        .sidebar {
+          position: fixed; top: 50px; left: 0; bottom: 0; width: 260px;
+          background: #fff; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+          transform: translateX(${isMenuOpen ? '0' : '-100%'});
+          transition: transform 0.3s ease; z-index: 1999;
+          padding: 20px 0;
+        }
+        .nav-item { padding: 15px 25px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #333; display: flex; justify-content: space-between; }
+        .nav-item:hover { background: #f9f9f9; }
+        .sub-nav { background: #fbfbfb; }
+        .sub-item { padding: 12px 40px; border-bottom: 1px solid #f5f5f5; font-size: 0.85rem; color: #666; display: block; text-decoration: none; }
+        .sub-item:hover { color: #000; background: #f0f0f0; }
+
+        /* MAIN CONTENT */
+        .content-wrapper { padding: 90px 8% 60px 8%; max-width: 1400px; margin: 0 auto; }
+        
+        .main-title { 
+          text-align: center; font-size: 2.5rem; font-weight: 900; 
+          margin-bottom: 40px; letter-spacing: -1px; color: #111; 
         }
 
-        .title-sub {
-          margin: 10px 0 40px 0;
-          font-weight: 800;
-          font-size: 2.8em;
-          color: #555;
+        .cards-grid {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px; margin-bottom: 40px;
+        }
+        
+        .bold-separator {
+          border: 0; border-top: 3px solid #000; 
+          margin: 50px 0; opacity: 1;
         }
 
-        .section-title {
-          font-size: 2.5em;
-          font-weight: 900;
-          color: #2c3e50;
-          margin-bottom: 30px;
-          margin-top: 60px;
-          text-transform: uppercase;
-          letter-spacing: -1px;
-        }
+        .reading-val { font-size: 2.5em; font-weight: 800; line-height: 1.1; margin: 5px 0; }
+        .reading-label { font-size: 0.9em; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 
-        .map-controls {
-          position: absolute; 
-          top: 20px; 
-          right: 20px; 
-          z-index: 1000; 
-          background: rgba(255,255,255,0.95); 
-          padding: 10px 15px; 
-          border-radius: 40px; 
-          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-          display: flex;
-          flex-wrap: wrap;
-          gap: 5px;
-          max-width: 90%;
-        }
+        /* MIDDLE SECTION */
+        .dashboard-mid { display: flex; gap: 30px; height: 500px; }
+        .map-box { flex: 3; background: #fff; padding: 10px; border: 2px solid #ddd; position: relative; }
+        .graphs-box { flex: 2; display: flex; flexDirection: column; gap: 15px; }
+        .mini-graph { flex: 1; background: #fff; padding: 15px; border: 2px solid #ddd; }
 
-        @media (max-width: 768px) {
-          .main-container { padding: 30px 4%; }
-          .title-main { font-size: 2.0em; }
-          .title-sub { font-size: 1.5em; margin-bottom: 20px; }
-          .section-title { font-size: 1.8em; margin-top: 40px; }
-          .map-controls {
-            top: 10px;
-            right: 50%;
-            transform: translateX(50%);
-            width: 90%;
-            justify-content: center;
-          }
-          .map-label { display: none; }
+        @media (max-width: 900px) {
+          .dashboard-mid { flex-direction: column; height: auto; }
+          .map-box { height: 400px; }
         }
       `}</style>
       
-      {/* HEADER */}
-      <header style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <h1 className="title-main">
-          MONITORAMENTO DE QUALIDADE DO AR
-        </h1>
-        <h2 className="title-sub">
-          LAB. VI - IFUSP
-        </h2>
+      {/* 1. HEADER (Top Strip) */}
+      <div className="top-header">
+        <div className="menu-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <MenuIcon />
+        </div>
+        <span>MONITORAMENTO DA QUALIDADE DO AR - LAB. VI - IFUSP - 2025</span>
+      </div>
+
+      {/* SIDEBAR NAVIGATION */}
+      <div className="sidebar">
+        <div className="nav-item">O PROJETO</div>
         
-        {/* CARDS (Rectangular & Colored) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '40px' }}>
+        <div className="nav-item" onClick={() => setIsSensorsSubmenuOpen(!isSensorsSubmenuOpen)}>
+          OS SENSORES <ChevronDown />
+        </div>
+        {isSensorsSubmenuOpen && (
+          <div className="sub-nav">
+            <a href="#" className="sub-item">DHT11 (Temp/Umid)</a>
+            <a href="#" className="sub-item">MQ135 (Qualidade Ar)</a>
+            <a href="#" className="sub-item">MQ9 (Gás Combustível)</a>
+          </div>
+        )}
+      </div>
+
+      {/* CONTENT OVERLAY (Closes menu when clicking outside) */}
+      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} style={{position:'fixed', top:50, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.3)', zIndex:1998}} />}
+
+      <div className="content-wrapper">
+        
+        {/* TITLE */}
+        <h1 className="main-title">MONITORAMENTO DA QUALIDADE DO AR</h1>
+
+        {/* 2. SQUARED ICONS (Cards) */}
+        <div className="cards-grid">
+          <div style={getCardStyle('rgb(255, 99, 132)')}>
+            <div className="reading-label" style={{color: 'rgb(255, 99, 132)'}}>🌡️ Temperatura</div>
+            <div className="reading-val" style={{color: 'rgb(255, 99, 132)'}}>{latest.temp.toFixed(2)}°C</div>
+          </div>
+
+          <div style={getCardStyle('rgb(54, 162, 235)')}>
+            <div className="reading-label" style={{color: 'rgb(54, 162, 235)'}}>💧 Umidade</div>
+            <div className="reading-val" style={{color: 'rgb(54, 162, 235)'}}>{latest.humidity.toFixed(2)}%</div>
+          </div>
+
+          <div style={getCardStyle('rgb(255, 159, 64)')}>
+            <div className="reading-label" style={{color: 'rgb(255, 159, 64)'}}>🔥 Gás (MQ9)</div>
+            <div className="reading-val" style={{color: 'rgb(255, 159, 64)'}}>{latest.mq9_val.toFixed(2)}</div>
+          </div>
+
+          <div style={getCardStyle('rgb(75, 192, 192)')}>
+            <div className="reading-label" style={{color: 'rgb(75, 192, 192)'}}>💨 Ar (MQ135)</div>
+            <div className="reading-val" style={{color: 'rgb(75, 192, 192)'}}>{latest.mq135_val.toFixed(2)}</div>
+          </div>
+        </div>
+
+        {/* BOLD SEPARATOR 1 */}
+        <hr className="bold-separator" />
+
+        {/* 3. MIDDLE SECTION: MAP (Left) & GRAPHS (Right) */}
+        <div className="dashboard-mid">
           
-          <div style={getReadingCardStyle('rgb(255, 99, 132)')}>
-            <div style={{ color: 'rgb(255, 99, 132)', fontSize: '1.1em', fontWeight: '900', margin: 0 }}>TEMPERATURA</div>
-            <div style={{ fontSize: '2.2em', fontWeight: 'bold', color: 'rgb(255, 99, 132)', lineHeight: '1.2' }}>{latest.temp.toFixed(1)}°C</div>
+          {/* MAP */}
+          <div className="map-box">
+             {/* Simple Map Controls inside the map box */}
+             <div style={{position: 'absolute', top: 15, right: 15, zIndex: 1000, background: 'rgba(255,255,255,0.9)', padding: '5px', borderRadius: '5px'}}>
+               <select onChange={(e) => setMapMode(e.target.value)} value={mapMode} style={{padding: '5px', border: '1px solid #ccc'}}>
+                 <option value="temp">🌡️ Temperatura</option>
+                 <option value="hum">💧 Umidade</option>
+                 <option value="mq9">🔥 MQ9</option>
+                 <option value="mq135">💨 MQ135</option>
+               </select>
+             </div>
+             <Map data={data} mode={mapMode} />
           </div>
 
-          <div style={getReadingCardStyle('rgb(54, 162, 235)')}>
-            <div style={{ color: 'rgb(54, 162, 235)', fontSize: '1.1em', fontWeight: '900', margin: 0 }}>UMIDADE</div>
-            <div style={{ fontSize: '2.2em', fontWeight: 'bold', color: 'rgb(54, 162, 235)', lineHeight: '1.2' }}>{latest.humidity.toFixed(1)}%</div>
-          </div>
-
-          <div style={getReadingCardStyle('rgb(255, 159, 64)')}>
-            <div style={{ color: 'rgb(255, 159, 64)', fontSize: '1.1em', fontWeight: '900', margin: 0 }}>GÁS (MQ9)</div>
-            <div style={{ fontSize: '2.2em', fontWeight: 'bold', color: 'rgb(255, 159, 64)', lineHeight: '1.2' }}>{latest.mq9_val}</div>
-          </div>
-
-          <div style={getReadingCardStyle('rgb(75, 192, 192)')}>
-            <div style={{ color: 'rgb(75, 192, 192)', fontSize: '1.1em', fontWeight: '900', margin: 0 }}>AR (MQ135)</div>
-            <div style={{ fontSize: '2.2em', fontWeight: 'bold', color: 'rgb(75, 192, 192)', lineHeight: '1.2' }}>{latest.mq135_val}</div>
-          </div>
-
-        </div>
-      </header>
-
-      {/* SECTION 1: OVERVIEW */}
-      <h2 className="section-title">VISÃO GERAL</h2>
-      
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', marginBottom: '20px' }}>
-        
-        {/* MAP */}
-        <div style={{ flex: '3', minWidth: '300px' }}>
-          <div style={{ ...cardStyle, padding: '0', border: '5px solid #fff', overflow: 'hidden', height: '600px', position: 'relative' }}>
-            <div className="map-controls">
-              <span className="map-label" style={{ fontSize: '0.8em', fontWeight: 'bold', color: '#888', marginRight: '5px', alignSelf: 'center' }}>VISUALIZAR:</span>
-              <button style={buttonStyle(mapMode === 'temp', 'rgb(255, 99, 132)')} onClick={() => setMapMode('temp')}>Temp</button>
-              <button style={buttonStyle(mapMode === 'hum', 'rgb(54, 162, 235)')} onClick={() => setMapMode('hum')}>Umid</button>
-              <button style={buttonStyle(mapMode === 'mq9', 'rgb(255, 159, 64)')} onClick={() => setMapMode('mq9')}>MQ9</button>
-              <button style={buttonStyle(mapMode === 'mq135', 'rgb(75, 192, 192)')} onClick={() => setMapMode('mq135')}>MQ135</button>
+          {/* STACKED GRAPHS */}
+          <div className="graphs-box">
+            <div className="mini-graph">
+              <h4 style={{margin: '0 0 10px 0', fontSize:'0.9rem', color: '#666'}}>CLIMA (TEMP / UMID)</h4>
+              <div style={{height: '180px'}}>
+                <Line data={climateChart} options={overviewOptions} />
+              </div>
             </div>
-            <Map data={data} mode={mapMode} />
-          </div>
-          <p style={{ textAlign: 'center', marginTop: '10px', color: '#999', fontSize: '0.9em' }}>📍 Localização: {latest.latitude.toFixed(4)}, {latest.longitude.toFixed(4)}</p>
-        </div>
-
-        {/* SIDE GRAPHS */}
-        <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '30px', minWidth: '300px' }}>
-          <div style={{ ...cardStyle, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '250px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h4 style={{ margin: 0, fontSize: '1.2em' }}>🌦️ CLIMA</h4>
-            </div>
-            <div style={{ flex: 1, minHeight: '0' }}>
-              <Line data={climateChart} options={overviewOptions} />
-            </div>
-          </div>
-
-          <div style={{ ...cardStyle, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '250px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h4 style={{ margin: 0, fontSize: '1.2em' }}>⚠️ GASES</h4>
-            </div>
-            <div style={{ flex: 1, minHeight: '0' }}>
-              <Line data={gasChart} options={overviewOptions} />
+            <div className="mini-graph">
+              <h4 style={{margin: '0 0 10px 0', fontSize:'0.9rem', color: '#666'}}>GASES (MQ9 / MQ135)</h4>
+              <div style={{height: '180px'}}>
+                <Line data={gasChart} options={overviewOptions} />
+              </div>
             </div>
           </div>
         </div>
+
+        {/* BOLD SEPARATOR 2 */}
+        <hr className="bold-separator" />
+
+        {/* 4. LEITURA POR SENSOR (Click to Open) */}
+        <div style={{textAlign: 'center', minHeight: '400px'}}>
+          <h2 style={{fontSize: '1.8rem', fontWeight: '900', marginBottom: '30px', textTransform: 'uppercase'}}>LEITURA POR SENSOR</h2>
+          
+          <div style={{display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '30px'}}>
+            <button style={btnStyle('temp', 'rgb(255, 99, 132)')} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>Temperatura</button>
+            <button style={btnStyle('hum', 'rgb(54, 162, 235)')} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>Umidade</button>
+            <button style={btnStyle('mq9', 'rgb(255, 159, 64)')} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>Gás (MQ9)</button>
+            <button style={btnStyle('mq135', 'rgb(75, 192, 192)')} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>Ar (MQ135)</button>
+          </div>
+
+          {/* GRAPH CONTAINER - Only shows if activeGraph is not null */}
+          <div style={{
+            background: '#fff', 
+            padding: '20px', 
+            border: '2px solid #ddd', 
+            height: '400px', 
+            display: activeGraph ? 'block' : 'none', // Logic: Only open if clicked
+            animation: 'fadeIn 0.5s'
+          }}>
+            {activeGraph && <Line data={activeChartData} options={detailOptions} />}
+          </div>
+
+          {!activeGraph && (
+            <div style={{color: '#999', marginTop: '50px', fontStyle: 'italic'}}>
+              Selecione um botão acima para visualizar o gráfico histórico detalhado.
+            </div>
+          )}
+        </div>
+
       </div>
-
-      {/* SECTION 2: DETAILED HISTORY */}
-      <h2 className="section-title" style={{ textAlign: 'center' }}>LEITURAS POR SENSOR</h2>
-      
-      <div>
-        {/* TABS */}
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '30px' }}>
-          <button style={buttonStyle(activeGraph === 'temp', 'rgb(255, 99, 132)')} onClick={() => setActiveGraph('temp')}>TEMPERATURA</button>
-          <button style={buttonStyle(activeGraph === 'hum', 'rgb(54, 162, 235)')} onClick={() => setActiveGraph('hum')}>UMIDADE</button>
-          <button style={buttonStyle(activeGraph === 'mq9', 'rgb(255, 159, 64)')} onClick={() => setActiveGraph('mq9')}>GÁS (MQ9)</button>
-          <button style={buttonStyle(activeGraph === 'mq135', 'rgb(75, 192, 192)')} onClick={() => setActiveGraph('mq135')}>AR (MQ135)</button>
-        </div>
-
-        {/* BIG CHART */}
-        <div style={{ ...cardStyle, height: '500px', padding: '15px' }}>
-          <Line data={activeChartData} options={detailOptions} />
-        </div>
-      </div>
-
     </div>
   );
 }
