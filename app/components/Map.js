@@ -57,11 +57,16 @@ export default function Map({ data, mode }) {
   };
 
   return (
-    <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%", borderRadius: "15px", background: '#e0e0e0' }}>
+    <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%", borderRadius: "15px", background: '#e0e0e0', minHeight: '300px' }}>
       {latestData && <RecenterAutomatically lat={latestData.latitude} lng={latestData.longitude} />}
       <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
       {data.map((reading, index) => {
-        const val = mode === 'temp' ? reading.temp : mode === 'hum' ? reading.humidity : mode === 'mq9' ? reading.mq9_val : reading.mq135_val;
+        // CORREÇÃO AQUI: Usando os nomes normalizados (hum, mq9, mq135)
+        const val = mode === 'temp' ? reading.temp : 
+                    mode === 'hum' ? reading.hum : 
+                    mode === 'mq9' ? reading.mq9 : 
+                    reading.mq135;
+                    
         if (!reading.latitude || !reading.longitude) return null;
         return (
           <Marker key={index} position={[reading.latitude, reading.longitude]} icon={createGradientIcon(val, mode)} zIndexOffset={-100}>
