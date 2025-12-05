@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic'; 
 import { Line } from 'react-chartjs-2';
 import {
@@ -36,7 +36,6 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState('');
   const [dhtMode, setDhtMode] = useState('temp'); 
   const [dhtColorActive, setDhtColorActive] = useState(false); 
-  const [isFirstLoad, setIsFirstLoad] = useState(true); // Flag to prevent date reset
 
   const sectionMedidas = useRef(null);
   const sectionMapas = useRef(null);
@@ -48,66 +47,49 @@ export default function Home() {
       const json = await res.json();
       if (json.data && Array.isArray(json.data)) {
         setRawData(json.data);
+        if (!selectedDate && json.data.length > 0) {
+           const sorted = [...json.data].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+           setSelectedDate(new Date(sorted[0].created_at).toLocaleDateString('pt-BR'));
+        }
       } 
     } catch (e) { console.error(e); }
   }
 
-  // Fetch initial data
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // === OPTIMIZATION: USE MEMO (Fixes Lag) ===
-  // Only recalculate this massive list when rawData changes, not on every render
-  const cleanData = useMemo(() => {
-    const processed = rawData.map(d => ({
-      created_at: d.created_at,
-      latitude: getValue(d, ['latitude', 'lat']),
-      longitude: getValue(d, ['longitude', 'lng']),
-      temp: getValue(d, ['temp', 'temperature']),
-      hum: getValue(d, ['humidity', 'hum', 'umid']), 
-      mq9: getValue(d, ['mq9_val', 'mq9']),       
-      mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
-    }));
-    // Sort Newest First
-    return processed.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [rawData]);
-
-  // Set default date ONLY ONCE
-  useEffect(() => {
-    if (isFirstLoad && cleanData.length > 0) {
-      const newestDate = new Date(cleanData[0].created_at).toLocaleDateString('pt-BR');
-      if (newestDate) {
-        setSelectedDate(newestDate);
-        setIsFirstLoad(false); // Never reset again
-      }
-    }
-  }, [cleanData, isFirstLoad]);
-
-  const latest = useMemo(() => cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 }, [cleanData]);
-  
-  // Graph Data (Oldest -> Newest)
-  const graphData = useMemo(() => [...cleanData].reverse(), [cleanData]);
-  
-  const availableDates = useMemo(() => [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))], [cleanData]);
-  
-  const filteredGraphData = useMemo(() => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate), [graphData, selectedDate]);
-  
-  const filteredLabels = useMemo(() => filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})), [filteredGraphData]);
-  
-  const allLabels = useMemo(() => graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})), [graphData]);
-
-  // Handlers
   const scrollTo = (ref) => {
     if (ref.current) {
       const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
+
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
+
+  const cleanData = rawData.map(d => ({
+    created_at: d.created_at,
+    latitude: getValue(d, ['latitude', 'lat']),
+    longitude: getValue(d, ['longitude', 'lng']),
+    temp: getValue(d, ['temp', 'temperature']),
+    hum: getValue(d, ['humidity', 'hum', 'umid']), 
+    mq9: getValue(d, ['mq9_val', 'mq9']),       
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
+  }));
+
+  cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
+  const graphData = [...cleanData].reverse(); 
+  
+  const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+  const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
+  const filteredGraphData = getFilteredData();
+  const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const colors = {
     temp: 'rgb(255, 99, 132)', hum: 'rgb(54, 162, 235)', mq9: 'rgb(255, 159, 64)', mq135: 'rgb(75, 192, 192)',
@@ -203,7 +185,33 @@ export default function Home() {
       <div className="content-wrapper">
         {currentView === 'home' && (
           <>
-            <div className="sub-nav-links"><span className="sub-nav-item" onClick={() => scrollTo(sectionMedidas)}>MEDIDAS</span><span style={{margin:'0 10px'}}>|</span><span className="sub-nav-item" onClick={() => scrollTo(sectionMapas)}>MAPAS</span><span style={{margin:'0 10px'}}>|</span><span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span></div>
+            <div className="sub-nav-links">
+              <span className="sub-nav-item" onClick={() => scrollTo(sectionMedidas)}>MEDIDAS</span><span style={{margin:'0 10px'}}>|</span>
+              <span className="sub-nav-item" onClick={() => scrollTo(sectionMapas)}>MAPAS</span><span style={{margin:'0 10px'}}>|</span>
+              <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
+            </div>
+
+            {/* SELETOR DE DATA MOVIDO PARA CÁ (TOPO) */}
+            <div style={{margin: '0 auto 20px auto', textAlign:'center'}}>
+              <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
+              <select 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)} 
+                style={{
+                  padding: '8px 12px', 
+                  borderRadius: '10px', 
+                  border: '1px solid #ccc', 
+                  fontSize: '0.9rem', 
+                  fontWeight: 'bold', 
+                  color: colors.text, 
+                  backgroundColor: '#fff', 
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                }}
+              >
+                {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
+              </select>
+            </div>
+
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
@@ -230,12 +238,6 @@ export default function Home() {
             <hr className="soft-line" />
             <div ref={sectionLeitura} className="full-screen-section" style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
-              <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
-                <label className="bold-text" style={{marginRight: '10px'}}>SELECIONAR DATA:</label>
-                <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
-                  {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
-                </select>
-              </div>
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
               {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
