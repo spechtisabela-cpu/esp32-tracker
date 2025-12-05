@@ -154,32 +154,17 @@ export default function Home() {
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 80px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        
-        /* NAV BAR: Mais fina (8px) e mais colada ao topo */
-        .sub-nav-links { 
-            text-align: center; 
-            font-size: 0.85em; 
-            color: ${colors.text}; 
-            font-weight: bold; 
-            position: sticky; 
-            top: 60px; 
-            z-index: 1000; 
-            background: ${colors.bg}; 
-            padding: 8px 0; /* METADE DA ALTURA ANTERIOR */
-            margin-bottom: 0px; /* COLADO NO CONTEÚDO */
-            border-bottom: 1px solid rgba(0,0,0,0.05); 
-        }
-        
+        .sub-nav-links { text-align: center; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 8px 0; margin-bottom: 0px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* TITLE SECTION: Padding de 30px (Tiniest bit down) */
+        /* THIS IS THE CHANGE: Increased padding-top to 50px to push title down */
         .top-section-container { 
             min-height: 80vh; 
             display: flex; 
             flex-direction: column; 
             justify-content: flex-start; 
-            padding-top: 30px; /* ESPAÇO PEQUENO PARA O TÍTULO */
+            padding-top: 50px; 
             padding-bottom: 40px; 
         }
         
@@ -224,8 +209,6 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SELETOR DE DATA REMOVIDO DAQUI (First Section) CONFORME PEDIDO */}
-
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
@@ -244,7 +227,6 @@ export default function Home() {
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
-                    {/* SELETOR DE DATA: DIREITA, ACIMA DO CLIMA */}
                     <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', marginBottom:'-15px'}}>
                         <label className="bold-text" style={{marginRight: '10px', fontSize: '0.8em'}}>DATA:</label>
                         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '5px 10px', borderRadius: '10px', border: '1px solid #ccc', fontSize: '0.9rem', fontWeight: 'bold', color: colors.text, background:'#fff'}}>
@@ -260,15 +242,12 @@ export default function Home() {
             <hr className="soft-line" />
             <div ref={sectionLeitura} className="full-screen-section" style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
-              
-              {/* SELETOR DE DATA: EMBAIXO DO TÍTULO, ANTES DOS BOTÕES */}
               <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
                 <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
                 <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
                   {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
                 </select>
               </div>
-
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
               {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
