@@ -8,7 +8,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// Importação do Mapa sem SSR (Server Side Rendering)
+// Mapa Dinâmico
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false, 
   loading: () => <div style={{height:'100%', width:'100%', background:'#ddd', borderRadius:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
@@ -17,17 +17,15 @@ const Map = dynamic(() => import('./components/Map'), {
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-// --- FUNÇÃO DE LIMPEZA DE DADOS (A CORREÇÃO ESTÁ AQUI) ---
-// Ela tenta ler todas as variações de nomes possíveis para garantir que o valor apareça
+// --- FUNÇÃO "CAÇADORA" DE DADOS ---
 const getValue = (obj, keys) => {
   if (!obj) return 0;
   for (const key of keys) {
-    // Se o valor existir (não for null nem undefined), retorna ele
     if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
       return Number(obj[key]);
     }
   }
-  return 0; // Se não achar nada, retorna 0
+  return 0;
 };
 
 export default function Home() {
@@ -75,28 +73,29 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === MAPEAMENTO DOS DADOS (AQUI ESTAVA O PROBLEMA) ===
+  // === PREPARAÇÃO DOS DADOS CORRIGIDA ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
-    latitude: Number(d.latitude || 0),
-    longitude: Number(d.longitude || 0),
     
-    // TEMPERATURA: Tenta ler 'temp', 'temperature' ou 't'
+    // AQUI ESTÁ A CORREÇÃO: Usamos getValue para caçar 'lat' ou 'latitude'
+    latitude: getValue(d, ['latitude', 'lat']),
+    longitude: getValue(d, ['longitude', 'lng', 'lon']),
+    
+    // Sensores
     temp: getValue(d, ['temp', 'temperature', 't']),
-    
-    // UMIDADE: Tenta ler 'humidity' (banco), 'hum' (arduino) ou 'umid'
     hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
-    
-    // MQ9: Tenta ler 'mq9_val' (banco), 'mq9' (arduino)
     mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
-    
-    // MQ135: Tenta ler 'mq135_val' (banco), 'mq135', ou 'mq135_co2'
     mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
   }));
 
-  // Ordenação e Filtros
+  // Filtra dados inválidos (GPS 0,0) para não estragar o mapa
+  const validMapData = cleanData.filter(d => d.latitude !== 0 && d.longitude !== 0);
+
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  
+  // Para os cards, pegamos o último dado, mesmo que o GPS seja 0
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
+  
   const graphData = [...cleanData].reverse(); 
   
   const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
@@ -214,7 +213,10 @@ export default function Home() {
                 <div className="flex-columns">
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
-                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
+                    
+                    {/* MAPA COM DADOS VALIDADOS APENAS (Sem 0,0) */}
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={validMapData} mode={mapMode} />{renderMapScale()}</div>
+                    
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
@@ -232,7 +234,6 @@ export default function Home() {
           </>
         )}
         
-        {/* PÁGINAS INDIVIDUAIS DOS SENSORES E PROJETO */}
         {(currentView === 'project' || currentView === 'iqar') && (
           <div className="rounded-box" style={{background: '#fff', minHeight: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
             <h2 className="bold-text">EM BREVE</h2>
