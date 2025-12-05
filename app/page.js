@@ -100,7 +100,7 @@ export default function Home() {
     plugins: { legend: { display: true, labels: { color: '#54504a', font: { weight: 'bold', size: 14 } } } }
   };
 
-  // --- MAP LEGEND (UPDATED TO TRANSPARENCY) ---
+  // --- MAP LEGEND ---
   const renderMapScale = (modeOverride = null) => {
     const currentMode = modeOverride || mapMode;
     let gradient = '';
@@ -109,7 +109,6 @@ export default function Home() {
     let unit = '';
 
     if (currentMode === 'temp') {
-      // Transparent Red -> Solid Red
       gradient = 'linear-gradient(90deg, rgba(255, 99, 132, 0.1), rgba(255, 99, 132, 1))';
       minLabel = '0°C'; maxLabel = '40°C'; unit = 'Temperatura';
     } else if (currentMode === 'hum') {
@@ -151,7 +150,7 @@ export default function Home() {
     backgroundColor: activeGraph === key ? color : '#e0e0e0',
     color: activeGraph === key ? '#fff' : '#54504a',
     fontWeight: '900', cursor: 'pointer', borderRadius: '15px', 
-    fontSize: '0.9rem', transition: 'all 0.2s', margin: '0 5px',
+    fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px', // Added margin for wrapping on mobile
     boxShadow: activeGraph === key ? `0 4px 10px ${color}66` : 'none',
   });
 
@@ -182,9 +181,29 @@ export default function Home() {
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: #fafafa; }
         
-        /* INCREASED PADDING TOP HERE */
-        .content-wrapper { padding: 160px 8% 60px 8%; max-width: 1400px; margin: 0 auto; }
+        /* === SPACING & LAYOUT ADJUSTMENTS === */
         
+        /* 1. Increased Top Padding to separate Index Bar from Title */
+        .content-wrapper { 
+          padding: 200px 8% 60px 8%; 
+          max-width: 1400px; 
+          margin: 0 auto; 
+        }
+
+        .main-title {
+          text-align: center;
+          font-size: 2.5rem;
+          font-weight: 900;
+          margin-bottom: 70px; /* 2. Increased Space between Title and Boxes */
+        }
+        
+        .cards-container {
+          display: grid; 
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+          gap: 20px; 
+          margin-bottom: 80px; /* 3. Increased Space between Boxes and Line */
+        }
+
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 60px 0; }
         .rounded-box { background-color: ${colors.cardBg}; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
@@ -192,8 +211,22 @@ export default function Home() {
         .sensor-page-grid { display: flex; gap: 40px; margin-top: 30px; }
         .sensor-left-desc { flex: 1; background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #eee; height: fit-content; }
         .sensor-right-graphs { flex: 2; display: flex; flex-direction: column; gap: 30px; }
+
+        /* === MOBILE ADAPTATION === */
+        @media (max-width: 900px) {
+          .content-wrapper { padding: 130px 5% 40px 5%; } /* Less padding on mobile but still spacious */
+          .main-title { font-size: 1.8rem; margin-bottom: 40px; } /* Smaller title */
+          .cards-container { margin-bottom: 50px; grid-template-columns: 1fr 1fr; } /* 2 cols on mobile */
+          .header-title { display: none; } /* Hide center title on small screens if needed */
+          .sensor-page-grid { flex-direction: column; }
+          .flex-columns { flex-direction: column; }
+          .map-controls-row { flex-wrap: wrap; }
+        }
         
-        @media (max-width: 900px) { .sensor-page-grid { flex-direction: column; } }
+        @media (max-width: 500px) {
+           .cards-container { grid-template-columns: 1fr; } /* 1 col on very small screens */
+           .map-controls-row button { flex: 1 1 40%; font-size: 0.8rem; }
+        }
       `}</style>
       
       <div className="top-header">
@@ -225,11 +258,11 @@ export default function Home() {
         
         {currentView === 'home' && (
           <>
-            <h1 style={{textAlign: 'center', fontSize: '2.5rem', fontWeight: '900', marginBottom: '40px'}}>
+            <h1 className="main-title">
               MONITORAMENTO DA QUALIDADE DO AR
             </h1>
 
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '50px'}}>
+            <div className="cards-container">
               <div style={getCardStyle(colors.temp)}>
                 <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Temperatura</div>
                 <div style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.temp?.toFixed(2) || '0.00'}°C</div>
@@ -250,7 +283,7 @@ export default function Home() {
 
             <hr className="soft-line" />
 
-            <div style={{display: 'flex', gap: '30px', flexWrap: 'wrap'}}>
+            <div className="flex-columns" style={{display: 'flex', gap: '30px', flexWrap: 'wrap'}}>
               
               <div style={{flex: '1 1 500px', minHeight: '550px', display: 'flex', flexDirection: 'column'}}>
                 <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}>
@@ -262,7 +295,7 @@ export default function Home() {
                   {renderMapScale()}
                 </div>
 
-                <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
+                <div className="map-controls-row" style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'temp' ? colors.temp : '#fff', color: mapMode === 'temp' ? '#fff' : '#555'}} onClick={() => setMapMode('temp')}>Temp</button>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'hum' ? colors.hum : '#fff', color: mapMode === 'hum' ? '#fff' : '#555'}} onClick={() => setMapMode('hum')}>Umid</button>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'mq9' ? colors.mq9 : '#fff', color: mapMode === 'mq9' ? '#fff' : '#555'}} onClick={() => setMapMode('mq9')}>MQ9</button>
@@ -303,7 +336,7 @@ export default function Home() {
 
             <div style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
-              <div style={{marginBottom: '30px'}}>
+              <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}>
                 <button style={btnStyle('temp', colors.temp)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button>
                 <button style={btnStyle('hum', colors.hum)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button>
                 <button style={btnStyle('mq9', colors.mq9)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button>
@@ -347,7 +380,7 @@ export default function Home() {
               <select 
                 value={selectedDate} 
                 onChange={(e) => setSelectedDate(e.target.value)}
-                style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}
+                style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text, maxWidth: '100%'}}
               >
                 {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
               </select>
@@ -389,7 +422,6 @@ export default function Home() {
                         </div>
                      </div>
                      
-                     {/* MAP FOR DHT11 (Showing Temp) */}
                      <div className="rounded-box" style={{background: '#fff', height: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA (TEMPERATURA)</h3>
                         <Map data={filteredGraphData} mode="temp" />
@@ -412,7 +444,6 @@ export default function Home() {
                           }} options={detailOptions} />
                         </div>
                     </div>
-                    {/* MAP FOR MQ9 */}
                      <div className="rounded-box" style={{background: '#fff', height: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA (MQ9)</h3>
                         <Map data={filteredGraphData} mode="mq9" />
@@ -435,7 +466,6 @@ export default function Home() {
                           }} options={detailOptions} />
                         </div>
                      </div>
-                     {/* MAP FOR MQ135 */}
                      <div className="rounded-box" style={{background: '#fff', height: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA (MQ135)</h3>
                         <Map data={filteredGraphData} mode="mq135" />
