@@ -28,7 +28,7 @@ const ChevronDown = () => (
 );
 
 export default function Home() {
-  const [data, setData] = useState([]);
+  const [rawData, setRawData] = useState([]);
   const [currentView, setCurrentView] = useState('home'); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
@@ -48,7 +48,7 @@ export default function Home() {
       const res = await fetch('/api/sensors');
       const json = await res.json();
       if (json.data) {
-        setData(json.data);
+        setRawData(json.data);
         if (!selectedDate && json.data.length > 0) {
            const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
@@ -65,7 +65,6 @@ export default function Home() {
 
   const scrollTo = (ref) => {
     if (ref.current) {
-      // Offset to handle sticky headers
       const y = ref.current.getBoundingClientRect().top + window.scrollY - 120;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
@@ -82,25 +81,34 @@ export default function Home() {
     setDhtColorActive(false); 
   };
 
-  // --- ROBUST DATA MAPPING (Fixes Empty Graphs) ---
-  const latestRaw = data.length > 0 ? data[0] : {};
-  const latest = {
-    temp: latestRaw.temp || 0,
-    // Check 'humidity' OR 'hum'
-    humidity: latestRaw.humidity !== undefined ? latestRaw.humidity : (latestRaw.hum || 0),
-    mq9_val: latestRaw.mq9_val !== undefined ? latestRaw.mq9_val : (latestRaw.mq9 || 0),
-    // Check 'mq135_val' OR 'mq135' OR 'co2'
-    mq135_val: latestRaw.mq135_val !== undefined ? latestRaw.mq135_val : (latestRaw.mq135 || latestRaw.co2 || 0),
-    latitude: latestRaw.latitude || 0, 
-    longitude: latestRaw.longitude || 0
-  };
+  // --- 1. DATA NORMALIZATION (FIX FOR MISSING VALUES) ---
+  // This creates a clean list where keys are always consistent
+  const cleanData = rawData.map(d => ({
+    created_at: d.created_at,
+    latitude: d.latitude,
+    longitude: d.longitude,
+    // Accept 'temp'
+    temp: d.temp ?? 0,
+    // Accept 'humidity' OR 'hum'
+    hum: d.humidity ?? d.hum ?? 0, 
+    // Accept 'mq9_val' OR 'mq9'
+    mq9: d.mq9_val ?? d.mq9 ?? 0,
+    // Accept 'mq135_val' OR 'mq135' OR 'co2' (fallback)
+    mq135: d.mq135_val ?? d.mq135 ?? d.co2 ?? 0 
+  }));
 
-  const graphData = [...data].reverse(); 
-  const availableDates = [...new Set(data.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+  const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
+  
+  // Use cleanData for graphs so they don't break
+  const graphData = [...cleanData].reverse(); 
+  
+  const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
   
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  
+  // Labels for main graphs (uses all data)
   const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const colors = {
@@ -123,10 +131,7 @@ export default function Home() {
   };
 
   const getThemeColor = () => {
-    // Main page matches background
     if (currentView === 'home') return colors.bg; 
-    
-    // Sensors have specific colors
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgb(255, 230, 235)' : 'rgb(230, 240, 255)';
     }
@@ -181,58 +186,22 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
-        /* HEADER COLOR MATCHES SIDEBAR/BG */
-        .top-header { 
-            position: fixed; top: 0; left: 0; right: 0; height: 60px; 
-            background: ${getThemeColor()}; 
-            border-bottom: 2px solid rgba(0,0,0,0.1); 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 0 30px; z-index: 2000; 
-            transition: background 0.5s;
-        }
-        
+        .top-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: ${getThemeColor()}; border-bottom: 2px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 2000; transition: background 0.5s; }
         .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
         .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
         
-        .sidebar { 
-            position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; 
-            background: ${getThemeColor()}; 
-            box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
-            transform: translateX(${isMenuOpen ? '0' : '-100%'}); 
-            transition: transform 0.3s ease, background 0.5s; 
-            z-index: 1999; padding: 30px 0; 
-        }
-        
+        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; background: ${getThemeColor()}; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transform: translateX(${isMenuOpen ? '0' : '-100%'}); transition: transform 0.3s ease, background 0.5s; z-index: 1999; padding: 30px 0; }
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
         .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        
-        /* STICKY SUB-NAV */
-        .sub-nav-links { 
-            text-align: center; 
-            font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
-            position: sticky; top: 60px; z-index: 1000; 
-            background: ${colors.bg}; /* Match background */
-            padding: 15px 0;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
+        .sub-nav-links { text-align: center; margin-bottom: 40px; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* === FIRST SECTION: MOVED UP === */
-        /* Using justify-content: flex-start and padding-top to position items higher */
-        .top-section-container { 
-            min-height: 90vh; 
-            display: flex; flex-direction: column; 
-            justify-content: flex-start; /* Align to top */
-            padding-top: 80px;           /* Push down slightly */
-            padding-bottom: 40px;
-        }
-
+        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 40px; padding-bottom: 40px; }
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
@@ -256,34 +225,34 @@ export default function Home() {
           .content-wrapper { padding: 90px 4% 40px 4%; }
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
+          
           .main-title br { display: block; }
           .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* FIXED: Mobile Cards Spacing */
+          /* FIX: Extra Spacing for Mobile Cards */
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 50px; /* Bigger Gap */
+            row-gap: 50px; /* More space */
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
           
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIXED: Map Height on Mobile Main Page */
+          /* FIX: Main Map Visiblity Mobile */
           .rounded-box-map { 
              height: 500px !important; 
              min-height: 500px !important; 
              display: block !important; 
-             width: 100% !important; 
+             width: 100% !important;
+             margin-bottom: 30px;
           }
           
           .flex-columns { flex-direction: column; align-items: center; width: 100%; }
           .map-column { width: 100%; flex: auto; max-width: 100%; }
-          
           .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } 
           .side-graphs-col > div { flex: 1; min-height: 250px; }
-          
           .sensor-layout { grid-template-columns: 1fr; }
         }
         @media (min-width: 901px) { .main-title br { display: none; } }
@@ -328,7 +297,6 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SECTION 1: MEDIDAS - Full Height but Top Aligned */}
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
@@ -338,15 +306,15 @@ export default function Home() {
                   </div>
                   <div style={getCardStyle(colors.hum)}>
                     <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Umidade</div>
-                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.humidity?.toFixed(2) || '0.00'}%</div>
+                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.hum?.toFixed(2) || '0.00'}%</div>
                   </div>
                   <div style={getCardStyle(colors.mq9)}>
                     <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Gás (MQ9)</div>
-                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9_val?.toFixed(2) || '0.00'}</div>
+                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9?.toFixed(2) || '0.00'}</div>
                   </div>
                   <div style={getCardStyle(colors.mq135)}>
                     <div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Ar (MQ135)</div>
-                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq135_val?.toFixed(2) || '0.00'}</div>
+                    <div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq135?.toFixed(2) || '0.00'}</div>
                   </div>
                 </div>
             </div>
@@ -359,9 +327,8 @@ export default function Home() {
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}>
                       <span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span>
                     </h3>
-                    {/* Fixed Height Map for Mobile */}
                     <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}>
-                      <Map data={data} mode={mapMode} />
+                      <Map data={cleanData} mode={mapMode} />
                       {renderMapScale()}
                     </div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}>
@@ -379,7 +346,7 @@ export default function Home() {
                           labels: allLabels,
                           datasets: [
                             { label: 'Temp 🌡️ (°C)', data: graphData.map(d => d.temp), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 },
-                            { label: 'Umid 💧 (%)', data: graphData.map(d => d.humidity), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }
+                            { label: 'Umid 💧 (%)', data: graphData.map(d => d.hum), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }
                           ]
                         }} options={overviewOptions} />
                       </div>
@@ -390,8 +357,8 @@ export default function Home() {
                         <Line data={{
                           labels: allLabels,
                           datasets: [
-                            { label: 'MQ9 🔥 (PPM)', data: graphData.map(d => d.mq9_val), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 },
-                            { label: 'MQ135 💨 (PPM)', data: graphData.map(d => d.mq135_val), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }
+                            { label: 'MQ9 🔥 (PPM)', data: graphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 },
+                            { label: 'MQ135 💨 (PPM)', data: graphData.map(d => d.mq135), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }
                           ]
                         }} options={overviewOptions} />
                       </div>
@@ -416,7 +383,7 @@ export default function Home() {
                       labels: allLabels,
                       datasets: [{
                         label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)',
-                        data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.humidity) : activeGraph === 'mq9' ? graphData.map(d => d.mq9_val) : activeGraph === 'mq135' ? graphData.map(d => d.mq135_val) : [],
+                        data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.hum) : activeGraph === 'mq9' ? graphData.map(d => d.mq9) : activeGraph === 'mq135' ? graphData.map(d => d.mq135) : [],
                         borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135,
                         backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'),
                         fill: true, tension: 0.3
@@ -475,7 +442,7 @@ export default function Home() {
                             <div style={{display:'flex', justifyContent:'space-between'}}>
                               <h3 className="bold-text">{dhtMode === 'temp' ? 'TEMPERATURA (°C)' : 'UMIDADE (%)'}</h3>
                               <h3 className="bold-text" style={{color: dhtMode === 'temp' ? colors.temp : colors.hum}}>
-                                  Última: {dhtMode === 'temp' ? (latest.temp?.toFixed(2) || '0') + '°C' : (latest.humidity?.toFixed(2) || '0') + '%'}
+                                  Última: {dhtMode === 'temp' ? (latest.temp?.toFixed(2) || '0') + '°C' : (latest.hum?.toFixed(2) || '0') + '%'}
                               </h3>
                             </div>
                             <div style={{height: '250px'}}>
@@ -483,7 +450,7 @@ export default function Home() {
                                  labels: filteredLabels,
                                  datasets: [{ 
                                      label: dhtMode === 'temp' ? 'Temperatura' : 'Umidade', 
-                                     data: dhtMode === 'temp' ? filteredGraphData.map(d => d.temp) : filteredGraphData.map(d => d.humidity), 
+                                     data: dhtMode === 'temp' ? filteredGraphData.map(d => d.temp) : filteredGraphData.map(d => d.hum), 
                                      borderColor: dhtMode === 'temp' ? colors.temp : colors.hum, 
                                      tension: 0.3 
                                  }]
@@ -508,7 +475,7 @@ export default function Home() {
                             {currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}
                           </h3>
                           <h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>
-                              Última: {currentView === 'mq9' ? (latest.mq9_val?.toFixed(2) || '0') : (latest.mq135_val?.toFixed(2) || '0')}
+                              Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}
                           </h3>
                         </div>
                         <div style={{height: '250px'}}>
@@ -516,7 +483,7 @@ export default function Home() {
                              labels: filteredLabels,
                              datasets: [{ 
                                  label: currentView === 'mq9' ? 'MQ9' : 'MQ135', 
-                                 data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9_val) : filteredGraphData.map(d => d.mq135_val), 
+                                 data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => d.mq135), 
                                  borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, 
                                  fill: true,
                                  backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)',
