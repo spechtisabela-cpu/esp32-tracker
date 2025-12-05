@@ -158,13 +158,13 @@ export default function Home() {
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* THIS IS THE CHANGE: Increased padding-top to 50px to push title down */
+        /* THIS IS THE CHANGE: Increased padding-top to 100px */
         .top-section-container { 
             min-height: 80vh; 
             display: flex; 
             flex-direction: column; 
             justify-content: flex-start; 
-            padding-top: 50px; 
+            padding-top: 100px; 
             padding-bottom: 40px; 
         }
         
