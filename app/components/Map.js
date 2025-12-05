@@ -61,7 +61,7 @@ export default function Map({ data, mode }) {
       {latestData && <RecenterAutomatically lat={latestData.latitude} lng={latestData.longitude} />}
       <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
       {data.map((reading, index) => {
-        // CORREÇÃO AQUI: Usando os nomes normalizados (hum, mq9, mq135)
+        // CORREÇÃO: Usar os nomes normalizados que chegam da page.js
         const val = mode === 'temp' ? reading.temp : 
                     mode === 'hum' ? reading.hum : 
                     mode === 'mq9' ? reading.mq9 : 
@@ -72,7 +72,7 @@ export default function Map({ data, mode }) {
           <Marker key={index} position={[reading.latitude, reading.longitude]} icon={createGradientIcon(val, mode)} zIndexOffset={-100}>
             <Popup>
                <b>{new Date(reading.created_at).toLocaleTimeString('pt-BR')}</b><br/>
-               {mode.toUpperCase()}: {val ? val.toFixed(2) : '0'}
+               {mode.toUpperCase()}: {val ? Number(val).toFixed(2) : '0'}
             </Popup>
           </Marker>
         );
