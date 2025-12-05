@@ -16,18 +16,6 @@ const Map = dynamic(() => import('./components/Map'), {
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-const getValue = (obj, keys) => {
-  if (!obj) return 0;
-  for (const key of keys) {
-    const val = obj[key];
-    if (val !== undefined && val !== null && val !== "") {
-      const num = Number(val);
-      return isNaN(num) ? 0 : num;
-    }
-  }
-  return 0;
-};
-
 export default function Home() {
   const [rawData, setRawData] = useState([]);
   const [currentView, setCurrentView] = useState('home'); 
@@ -45,12 +33,11 @@ export default function Home() {
 
   async function fetchData() {
     try {
-      // === FIX 1: FORCE NO CACHE ===
       const res = await fetch('/api/sensors', { cache: 'no-store' });
       const json = await res.json();
-      
       if (json.data && Array.isArray(json.data)) {
         setRawData(json.data);
+        // Seleciona a data mais recente automaticamente se não houver seleção
         if (!selectedDate && json.data.length > 0) {
            const sorted = [...json.data].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
            setSelectedDate(new Date(sorted[0].created_at).toLocaleDateString('pt-BR'));
@@ -75,26 +62,36 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === DATA MAPPING ===
+  // === MAPEAMENTO DIRETO (SEM FUNÇÕES EXTRAS) ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
-    // Try EVERY possible name
-    latitude: getValue(d, ['latitude', 'lat']),
-    longitude: getValue(d, ['longitude', 'lng']),
-    temp: getValue(d, ['temp', 'temperature', 't']),
-    hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
-    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
-    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2']) 
+    // Pegando direto do nome da coluna do banco (conforme seu print)
+    latitude: Number(d.latitude || 0),
+    longitude: Number(d.longitude || 0),
+    temp: Number(d.temp || 0),
+    hum: Number(d.humidity || 0),        // Coluna 'humidity'
+    mq9: Number(d.mq9_val || 0),         // Coluna 'mq9_val'
+    mq135: Number(d.mq135_val || 0)      // Coluna 'mq135_val'
   }));
 
+  // Ordena Cronológico Reverso (Novo -> Antigo) para processamento
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
+  
+  // Para gráficos: Inverter para (Antigo -> Novo)
   const graphData = [...cleanData].reverse(); 
   
+  // Datas disponíveis para o filtro
   const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+  
+  // Dados filtrados pela data
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
+  
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  
+  // Labels para os gráficos gerais (usa todos os dados carregados ou filtrados, aqui uso todos para o overview)
   const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const colors = {
@@ -203,16 +200,11 @@ export default function Home() {
             </div>
             <hr className="soft-line" />
             
-            {/* === THE DEBUG BOX: SEND ME A PHOTO OF THIS IF IT IS STILL 0 === */}
-            <div style={{background:'#000', color:'#0f0', padding:'20px', borderRadius:'10px', margin:'20px 0', fontFamily:'monospace', overflow:'auto', maxHeight:'200px'}}>
-               <h3 style={{marginTop:0}}>DEBUG AREA (LAST DATA):</h3>
-               <pre>{JSON.stringify(rawData[0], null, 2)}</pre>
-            </div>
-            
             <div ref={sectionMapas} className="full-screen-section" style={{background: 'rgba(255,255,255,0.5)', borderRadius:'30px', padding:'30px'}}>
                 <div className="flex-columns">
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
+                    {/* Mapa renderiza tudo, mesmo se for 0 */}
                     <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
@@ -225,8 +217,17 @@ export default function Home() {
             <hr className="soft-line" />
             <div ref={sectionLeitura} className="full-screen-section" style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
+              
+              {/* DATE SELECTOR (Com datas carregadas do banco) */}
+              <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
+                <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
+                <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
+                  {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
+                </select>
+              </div>
+
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
-              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: allLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.hum) : activeGraph === 'mq9' ? graphData.map(d => d.mq9) : activeGraph === 'mq135' ? graphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
+              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
           </>
         )}
