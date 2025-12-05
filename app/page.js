@@ -14,7 +14,6 @@ const Map = dynamic(() => import('./components/Map'), {
   loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
 });
 
-// --- ICONS ---
 const MenuIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -59,7 +58,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- DATA PROCESSING ---
+  // Data Processing
   const latest = data.length > 0 ? data[0] : { temp: 0, humidity: 0, mq9_val: 0, mq135_val: 0, latitude: 0, longitude: 0 };
   const graphData = [...data].reverse(); 
   const availableDates = [...new Set(data.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
@@ -80,33 +79,21 @@ export default function Home() {
     cardBg: '#faf7f2'
   };
 
-  // --- CHART OPTIONS ---
   const overviewOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { 
-      legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } 
-    },
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } },
     scales: { x: { display: false }, y: { display: true, ticks: { font: { weight: 'bold', size: 10 }, color: '#54504a' } } } 
   };
 
   const detailOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: { 
-      x: { display: true, ticks: { color: '#54504a' } }, 
-      y: { display: true, ticks: { color: '#54504a', font: { weight: 'bold' } } } 
-    },
+    responsive: true, maintainAspectRatio: false,
+    scales: { x: { display: true, ticks: { color: '#54504a' } }, y: { display: true, ticks: { color: '#54504a', font: { weight: 'bold' } } } },
     plugins: { legend: { display: true, labels: { color: '#54504a', font: { weight: 'bold', size: 14 } } } }
   };
 
-  // --- MAP LEGEND ---
   const renderMapScale = (modeOverride = null) => {
     const currentMode = modeOverride || mapMode;
-    let gradient = '';
-    let minLabel = '0';
-    let maxLabel = '100';
-    let unit = '';
+    let gradient = '', minLabel = '0', maxLabel = '100', unit = '';
 
     if (currentMode === 'temp') {
       gradient = 'linear-gradient(90deg, rgba(255, 99, 132, 0.1), rgba(255, 99, 132, 1))';
@@ -147,10 +134,8 @@ export default function Home() {
 
   const btnStyle = (key, color) => ({
     padding: '10px 20px', border: 'none',
-    backgroundColor: activeGraph === key ? color : '#e0e0e0',
-    color: activeGraph === key ? '#fff' : '#54504a',
-    fontWeight: '900', cursor: 'pointer', borderRadius: '15px', 
-    fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px', // Added margin for wrapping on mobile
+    backgroundColor: activeGraph === key ? color : '#e0e0e0', color: activeGraph === key ? '#fff' : '#54504a',
+    fontWeight: '900', cursor: 'pointer', borderRadius: '15px', fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px',
     boxShadow: activeGraph === key ? `0 4px 10px ${color}66` : 'none',
   });
 
@@ -161,72 +146,40 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${colors.bg}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; }
         
-        .top-header {
-          position: fixed; top: 0; left: 0; right: 0; height: 60px;
-          background: ${colors.bg}; border-bottom: 2px solid rgba(0,0,0,0.1);
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 0 30px; z-index: 2000;
-        }
+        .top-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: ${colors.bg}; border-bottom: 2px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 2000; }
         .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
         .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
-        
-        .sidebar {
-          position: fixed; top: 60px; left: 0; bottom: 0; width: 280px;
-          background: #fff; box-shadow: 4px 0 15px rgba(0,0,0,0.05);
-          transform: translateX(${isMenuOpen ? '0' : '-100%'});
-          transition: transform 0.3s ease; z-index: 1999; padding: 30px 0;
-        }
+        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; background: #fff; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transform: translateX(${isMenuOpen ? '0' : '-100%'}); transition: transform 0.3s ease; z-index: 1999; padding: 30px 0; }
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
         .nav-item:hover { background: #f5f5f5; }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: #fafafa; }
         
-        /* === SPACING & LAYOUT ADJUSTMENTS === */
+        /* === SPACING UPDATES === */
+        .content-wrapper { padding: 200px 8% 60px 8%; max-width: 1400px; margin: 0 auto; }
         
-        /* 1. Increased Top Padding to separate Index Bar from Title */
-        .content-wrapper { 
-          padding: 200px 8% 60px 8%; 
-          max-width: 1400px; 
-          margin: 0 auto; 
-        }
-
-        .main-title {
-          text-align: center;
-          font-size: 2.5rem;
-          font-weight: 900;
-          margin-bottom: 70px; /* 2. Increased Space between Title and Boxes */
-        }
+        /* 1. Space between Title and Cards = 80px */
+        .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 80px; }
         
-        .cards-container {
-          display: grid; 
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-          gap: 20px; 
-          margin-bottom: 80px; /* 3. Increased Space between Boxes and Line */
-        }
+        /* 2. Space between Cards and Divider = 80px */
+        .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 80px; }
 
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 60px 0; }
         .rounded-box { background-color: ${colors.cardBg}; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
-        
         .sensor-page-grid { display: flex; gap: 40px; margin-top: 30px; }
         .sensor-left-desc { flex: 1; background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #eee; height: fit-content; }
         .sensor-right-graphs { flex: 2; display: flex; flex-direction: column; gap: 30px; }
 
-        /* === MOBILE ADAPTATION === */
         @media (max-width: 900px) {
-          .content-wrapper { padding: 130px 5% 40px 5%; } /* Less padding on mobile but still spacious */
-          .main-title { font-size: 1.8rem; margin-bottom: 40px; } /* Smaller title */
-          .cards-container { margin-bottom: 50px; grid-template-columns: 1fr 1fr; } /* 2 cols on mobile */
-          .header-title { display: none; } /* Hide center title on small screens if needed */
+          .content-wrapper { padding: 130px 5% 40px 5%; }
+          .main-title { font-size: 1.8rem; margin-bottom: 50px; }
+          .cards-container { margin-bottom: 50px; grid-template-columns: 1fr 1fr; }
+          .header-title { display: none; }
           .sensor-page-grid { flex-direction: column; }
           .flex-columns { flex-direction: column; }
-          .map-controls-row { flex-wrap: wrap; }
         }
-        
-        @media (max-width: 500px) {
-           .cards-container { grid-template-columns: 1fr; } /* 1 col on very small screens */
-           .map-controls-row button { flex: 1 1 40%; font-size: 0.8rem; }
-        }
+        @media (max-width: 500px) { .cards-container { grid-template-columns: 1fr; } }
       `}</style>
       
       <div className="top-header">
@@ -258,9 +211,7 @@ export default function Home() {
         
         {currentView === 'home' && (
           <>
-            <h1 className="main-title">
-              MONITORAMENTO DA QUALIDADE DO AR
-            </h1>
+            <h1 className="main-title">MONITORAMENTO DA QUALIDADE DO AR</h1>
 
             <div className="cards-container">
               <div style={getCardStyle(colors.temp)}>
@@ -284,7 +235,6 @@ export default function Home() {
             <hr className="soft-line" />
 
             <div className="flex-columns" style={{display: 'flex', gap: '30px', flexWrap: 'wrap'}}>
-              
               <div style={{flex: '1 1 500px', minHeight: '550px', display: 'flex', flexDirection: 'column'}}>
                 <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}>
                   <span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span>
@@ -295,7 +245,7 @@ export default function Home() {
                   {renderMapScale()}
                 </div>
 
-                <div className="map-controls-row" style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center'}}>
+                <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'temp' ? colors.temp : '#fff', color: mapMode === 'temp' ? '#fff' : '#555'}} onClick={() => setMapMode('temp')}>Temp</button>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'hum' ? colors.hum : '#fff', color: mapMode === 'hum' ? '#fff' : '#555'}} onClick={() => setMapMode('hum')}>Umid</button>
                   <button style={{padding:'5px 10px', fontWeight:'bold', borderRadius:'10px', border:'1px solid #ccc', background: mapMode === 'mq9' ? colors.mq9 : '#fff', color: mapMode === 'mq9' ? '#fff' : '#555'}} onClick={() => setMapMode('mq9')}>MQ9</button>
@@ -348,9 +298,7 @@ export default function Home() {
                     <Line data={{
                       labels: allLabels,
                       datasets: [{
-                        label: activeGraph === 'temp' ? 'Temperatura (°C)' : 
-                               activeGraph === 'hum' ? 'Umidade (%)' : 
-                               activeGraph === 'mq9' ? 'Gás MQ9 (PPM)' : 'Ar MQ135 (PPM)',
+                        label: activeGraph === 'temp' ? 'Temperatura (°C)' : activeGraph === 'hum' ? 'Umidade (%)' : activeGraph === 'mq9' ? 'Gás MQ9 (PPM)' : 'Ar MQ135 (PPM)',
                         data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.humidity) : activeGraph === 'mq9' ? graphData.map(d => d.mq9_val) : graphData.map(d => d.mq135_val),
                         borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135,
                         backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'),
@@ -371,7 +319,7 @@ export default function Home() {
 
         {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
           <div>
-            <h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase'}}>
+            <h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', marginTop: '30px'}}>
               SENSOR: {currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}
             </h1>
             
@@ -380,14 +328,13 @@ export default function Home() {
               <select 
                 value={selectedDate} 
                 onChange={(e) => setSelectedDate(e.target.value)}
-                style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text, maxWidth: '100%'}}
+                style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}
               >
                 {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
               </select>
             </div>
 
             <div className="sensor-page-grid">
-              
               <div className="sensor-left-desc">
                 <h3 className="bold-text">SOBRE O SENSOR</h3>
                 <p style={{lineHeight: '1.6'}}>Descrição do sensor em breve.</p>
@@ -408,7 +355,6 @@ export default function Home() {
                           }} options={detailOptions} />
                         </div>
                      </div>
-
                      <div className="rounded-box" style={{background: '#fff'}}>
                         <div style={{display:'flex', justifyContent:'space-between'}}>
                           <h3 className="bold-text">UMIDADE (%)</h3>
@@ -421,7 +367,6 @@ export default function Home() {
                           }} options={detailOptions} />
                         </div>
                      </div>
-                     
                      <div className="rounded-box" style={{background: '#fff', height: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA (TEMPERATURA)</h3>
                         <Map data={filteredGraphData} mode="temp" />
@@ -474,7 +419,6 @@ export default function Home() {
                   </>
                 )}
               </div>
-
             </div>
           </div>
         )}
