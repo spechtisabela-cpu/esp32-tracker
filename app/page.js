@@ -8,21 +8,26 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
+// Importação do Mapa sem SSR (Server Side Rendering)
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false, 
-  loading: () => <div style={{height:'100%', width:'100%', background:'#ddd', borderRadius:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando...</div>
+  loading: () => <div style={{height:'100%', width:'100%', background:'#ddd', borderRadius:'15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
 });
 
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-// HELPERS
+// --- FUNÇÃO DE LIMPEZA DE DADOS (A CORREÇÃO ESTÁ AQUI) ---
+// Ela tenta ler todas as variações de nomes possíveis para garantir que o valor apareça
 const getValue = (obj, keys) => {
   if (!obj) return 0;
   for (const key of keys) {
-    if (obj[key] !== undefined && obj[key] !== null) return Number(obj[key]);
+    // Se o valor existir (não for null nem undefined), retorna ele
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+      return Number(obj[key]);
+    }
   }
-  return 0;
+  return 0; // Se não achar nada, retorna 0
 };
 
 export default function Home() {
@@ -70,18 +75,26 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === PREPARAÇÃO DOS DADOS (CORRIGIDA) ===
+  // === MAPEAMENTO DOS DADOS (AQUI ESTAVA O PROBLEMA) ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
     latitude: Number(d.latitude || 0),
     longitude: Number(d.longitude || 0),
-    // Mapeando nomes do Banco de Dados para variáveis locais
-    temp: getValue(d, ['temp', 'temperature']),
-    hum: getValue(d, ['humidity', 'hum']), 
-    mq9: getValue(d, ['mq9_val', 'mq9']),       
-    mq135: getValue(d, ['mq135_val', 'mq135']) 
+    
+    // TEMPERATURA: Tenta ler 'temp', 'temperature' ou 't'
+    temp: getValue(d, ['temp', 'temperature', 't']),
+    
+    // UMIDADE: Tenta ler 'humidity' (banco), 'hum' (arduino) ou 'umid'
+    hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
+    
+    // MQ9: Tenta ler 'mq9_val' (banco), 'mq9' (arduino)
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
+    
+    // MQ135: Tenta ler 'mq135_val' (banco), 'mq135', ou 'mq135_co2'
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
   }));
 
+  // Ordenação e Filtros
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
   const graphData = [...cleanData].reverse(); 
@@ -217,6 +230,48 @@ export default function Home() {
               {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: allLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? graphData.map(d => d.temp) : activeGraph === 'hum' ? graphData.map(d => d.hum) : activeGraph === 'mq9' ? graphData.map(d => d.mq9) : activeGraph === 'mq135' ? graphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
           </>
+        )}
+        
+        {/* PÁGINAS INDIVIDUAIS DOS SENSORES E PROJETO */}
+        {(currentView === 'project' || currentView === 'iqar') && (
+          <div className="rounded-box" style={{background: '#fff', minHeight: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+            <h2 className="bold-text">EM BREVE</h2>
+          </div>
+        )}
+
+        {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
+          <div>
+            <div className="sensor-title-container"><h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', margin: 0}}>{currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}</h1><div className="sensor-divider"></div></div>
+            <div className="sensor-desc-box"><h3 className="bold-text">SOBRE O SENSOR</h3><p style={{lineHeight: '1.6', margin: 0}}>Descrição técnica em breve.</p></div>
+            
+            {currentView === 'dht11' && (
+                <div style={{marginTop: '20px', marginBottom: '30px', display: 'flex', justifyContent: 'center'}}>
+                    <button style={btnStyle('temp', colors.temp, dhtColorActive ? dhtMode : null)} onClick={() => handleDhtChange('temp')}>TEMPERATURA</button>
+                    <button style={btnStyle('hum', colors.hum, dhtColorActive ? dhtMode : null)} onClick={() => handleDhtChange('hum')}>UMIDADE</button>
+                </div>
+            )}
+            
+            <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
+              <label className="bold-text" style={{marginRight: '10px'}}>SELECIONAR DATA:</label>
+              <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
+                {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
+              </select>
+            </div>
+
+            {currentView === 'dht11' ? (
+                dhtColorActive ? (
+                    <div className="sensor-layout">
+                        <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{dhtMode === 'temp' ? 'TEMPERATURA (°C)' : 'UMIDADE (%)'}</h3><h3 className="bold-text" style={{color: dhtMode === 'temp' ? colors.temp : colors.hum}}>Última: {dhtMode === 'temp' ? (latest.temp?.toFixed(2) || '0') + '°C' : (latest.hum?.toFixed(2) || '0') + '%'}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: dhtMode === 'temp' ? 'Temperatura' : 'Umidade', data: dhtMode === 'temp' ? filteredGraphData.map(d => d.temp) : filteredGraphData.map(d => d.hum), borderColor: dhtMode === 'temp' ? colors.temp : colors.hum, tension: 0.3 }]}} options={detailOptions} /></div></div>
+                        <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3><Map data={filteredGraphData} mode={dhtMode} />{renderMapScale(dhtMode)}</div>
+                    </div>
+                ) : ( <p style={{textAlign:'center', color:'#999', marginTop:'30px', fontStyle:'italic'}}>Selecione uma leitura acima para visualizar.</p> )
+            ) : (
+                <div className="sensor-layout">
+                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => d.mq135), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
+                    <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3><Map data={filteredGraphData} mode={currentView} />{renderMapScale(currentView)}</div>
+                </div>
+            )}
+          </div>
         )}
       </div>
     </div>
