@@ -25,8 +25,18 @@ export async function POST(request) {
        ) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
-        lat || 0, lng || 0, temp || 0, hum || 0, mq9 || 0, mq135 || 0, 
-        co || 0, alcohol || 0, co2 || 0, toluene || 0, nh4 || 0, acetone || 0
+        lat || 0, 
+        lng || 0, 
+        temp || 0, 
+        hum || 0, 
+        mq9 || 0, 
+        mq135 || 0, 
+        co || 0, 
+        alcohol || 0, 
+        co2 || 0, 
+        toluene || 0, 
+        nh4 || 0, 
+        acetone || 0
       ]
     );
 
@@ -44,8 +54,8 @@ export async function GET() {
   try {
     client = await pool.connect();
     
-    // === FIX HERE: INCREASED LIMIT TO 20,000 ===
-    // This allows fetching roughly 48-60 hours of history (at 10s intervals)
+    // Limite aumentado para 20.000 para ver dias anteriores
+    // (Isso cobre cerca de 55 horas de histórico com leituras a cada 10s)
     const result = await client.query('SELECT * FROM sensor_data ORDER BY created_at DESC LIMIT 20000');
     
     const headers = new Headers();
@@ -57,5 +67,4 @@ export async function GET() {
   } finally {
     if (client) client.release();
   }
-}
 }
