@@ -65,7 +65,8 @@ export default function Home() {
 
   const scrollTo = (ref) => {
     if (ref.current) {
-      const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
+      // Offset to handle sticky headers
+      const y = ref.current.getBoundingClientRect().top + window.scrollY - 120;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
@@ -81,12 +82,15 @@ export default function Home() {
     setDhtColorActive(false); 
   };
 
+  // --- ROBUST DATA MAPPING (Fixes Empty Graphs) ---
   const latestRaw = data.length > 0 ? data[0] : {};
   const latest = {
     temp: latestRaw.temp || 0,
-    humidity: latestRaw.humidity || latestRaw.hum || 0,
-    mq9_val: latestRaw.mq9_val || latestRaw.mq9 || 0,
-    mq135_val: latestRaw.mq135_val || latestRaw.mq135 || 0,
+    // Check 'humidity' OR 'hum'
+    humidity: latestRaw.humidity !== undefined ? latestRaw.humidity : (latestRaw.hum || 0),
+    mq9_val: latestRaw.mq9_val !== undefined ? latestRaw.mq9_val : (latestRaw.mq9 || 0),
+    // Check 'mq135_val' OR 'mq135' OR 'co2'
+    mq135_val: latestRaw.mq135_val !== undefined ? latestRaw.mq135_val : (latestRaw.mq135 || latestRaw.co2 || 0),
     latitude: latestRaw.latitude || 0, 
     longitude: latestRaw.longitude || 0
   };
@@ -109,7 +113,6 @@ export default function Home() {
     cardBg: '#faf7f2'
   };
 
-  // Background Logic
   const getPageBackground = () => {
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.12)' : 'rgba(54, 162, 235, 0.12)';
@@ -119,14 +122,17 @@ export default function Home() {
     return colors.bg;
   };
 
-  // Theme Color for Header/Sidebar
   const getThemeColor = () => {
+    // Main page matches background
+    if (currentView === 'home') return colors.bg; 
+    
+    // Sensors have specific colors
     if (currentView === 'dht11' && dhtColorActive) {
-        return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.25)' : 'rgba(54, 162, 235, 0.25)';
+        return dhtMode === 'temp' ? 'rgb(255, 230, 235)' : 'rgb(230, 240, 255)';
     }
-    if (currentView === 'mq9') return 'rgba(255, 159, 64, 0.25)';
-    if (currentView === 'mq135') return 'rgba(75, 192, 192, 0.25)';
-    return '#fff'; // Default white for Main Page header/sidebar
+    if (currentView === 'mq9') return 'rgb(255, 240, 220)';
+    if (currentView === 'mq135') return 'rgb(220, 250, 250)';
+    return '#fff';
   };
 
   const overviewOptions = {
@@ -175,7 +181,7 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
-        /* HEADER COLOR MATCHES SIDEBAR */
+        /* HEADER COLOR MATCHES SIDEBAR/BG */
         .top-header { 
             position: fixed; top: 0; left: 0; right: 0; height: 60px; 
             background: ${getThemeColor()}; 
@@ -203,11 +209,30 @@ export default function Home() {
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        .sub-nav-links { text-align: center; margin-bottom: 40px; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        
+        /* STICKY SUB-NAV */
+        .sub-nav-links { 
+            text-align: center; 
+            font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
+            position: sticky; top: 60px; z-index: 1000; 
+            background: ${colors.bg}; /* Match background */
+            padding: 15px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* FULL HEIGHT FOR MEDIDAS SECTION */
+        /* === FIRST SECTION: MOVED UP === */
+        /* Using justify-content: flex-start and padding-top to position items higher */
+        .top-section-container { 
+            min-height: 90vh; 
+            display: flex; flex-direction: column; 
+            justify-content: flex-start; /* Align to top */
+            padding-top: 80px;           /* Push down slightly */
+            padding-bottom: 40px;
+        }
+
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
@@ -232,20 +257,20 @@ export default function Home() {
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
           .main-title br { display: block; }
-          .main-title { font-size: 1.8rem; margin-bottom: 40px; }
+          .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* FIX: CARDS OVERLAP & SPACING */
+          /* FIXED: Mobile Cards Spacing */
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 40px; /* More space between rows */
+            row-gap: 50px; /* Bigger Gap */
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
-          .cards-container .reading-val { font-size: 1.3em; } /* Smaller font for safety */
+          .cards-container .reading-val { font-size: 1.4em; }
           
-          .full-screen-section { min-height: auto; display: block; padding: 20px 0; }
+          .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIX: MAP VISIBILITY & CENTERING */
+          /* FIXED: Map Height on Mobile Main Page */
           .rounded-box-map { 
              height: 500px !important; 
              min-height: 500px !important; 
@@ -303,8 +328,8 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SECTION 1: MEDIDAS - Full Screen & Centered */}
-            <div ref={sectionMedidas} className="full-screen-section">
+            {/* SECTION 1: MEDIDAS - Full Height but Top Aligned */}
+            <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
                   <div style={getCardStyle(colors.temp)}>
@@ -334,6 +359,7 @@ export default function Home() {
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}>
                       <span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span>
                     </h3>
+                    {/* Fixed Height Map for Mobile */}
                     <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}>
                       <Map data={data} mode={mapMode} />
                       {renderMapScale()}
@@ -422,7 +448,7 @@ export default function Home() {
               <p style={{lineHeight: '1.6', margin: 0}}>Descrição técnica e funcionamento do sensor em breve.</p>
             </div>
             
-            {/* DHT BUTTONS OUTSIDE BOX */}
+            {/* DHT BUTTONS */}
             {currentView === 'dht11' && (
                 <div style={{marginTop: '20px', marginBottom: '30px', display: 'flex', justifyContent: 'center'}}>
                     <button style={btnStyle('temp', colors.temp, dhtColorActive ? dhtMode : null)} onClick={() => handleDhtChange('temp')}>TEMPERATURA</button>
