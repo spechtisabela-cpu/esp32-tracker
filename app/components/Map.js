@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix for default marker icons (only runs in browser)
 if (typeof window !== 'undefined') {
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
@@ -31,69 +30,41 @@ export default function Map({ data, mode }) {
   const center = latestData ? [latestData.latitude, latestData.longitude] : defaultCenter;
 
   const createGradientIcon = (val, mode) => {
-    // 1. Define Color Base (RGB)
-    let r=0, g=0, b=0;
-    let max = 100;
+    let r=0, g=0, b=0, max=100;
+    if (mode === 'temp') { r=255; g=99; b=132; max=40; }       
+    else if (mode === 'hum') { r=54; g=162; b=235; max=100; }  
+    else if (mode === 'mq9') { r=255; g=159; b=64; max=500; }  
+    else if (mode === 'mq135') { r=75; g=192; b=192; max=500; }
 
-    if (mode === 'temp') { r=255; g=99; b=132; max=40; }       // Red
-    else if (mode === 'hum') { r=54; g=162; b=235; max=100; }  // Blue
-    else if (mode === 'mq9') { r=255; g=159; b=64; max=500; }  // Orange
-    else if (mode === 'mq135') { r=75; g=192; b=192; max=500; }// Teal
-
-    // 2. Calculate Intensity (0.0 to 1.0)
     const safeVal = val || 0;
     const pct = Math.min(Math.max(safeVal, 0), max) / max;
-
-    // 3. Size Calculation (Bigger: 15px to 40px)
     const size = 15 + (pct * 25); 
-
-    // 4. Alpha (Transparency)
-    // Center is stronger (0.4 to 0.9), Edges fade to 0
     const centerAlpha = 0.4 + (pct * 0.5);
 
-    // 5. CSS Radial Gradient for "Fade Out" effect
     const colorStr = `rgba(${r}, ${g}, ${b}, ${centerAlpha})`;
     const htmlStyles = `
-      width: ${size}px;
-      height: ${size}px;
+      width: ${size}px; height: ${size}px;
       background: radial-gradient(circle, ${colorStr} 0%, rgba(${r},${g},${b},0) 70%);
       border-radius: 50%;
     `;
 
     return L.divIcon({
-      className: 'custom-heatmap-icon', // Empty class to remove default styles
+      className: 'custom-heatmap-icon',
       html: `<div style="${htmlStyles}"></div>`,
       iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2] // Center the dot
+      iconAnchor: [size / 2, size / 2]
     });
   };
 
   return (
     <MapContainer center={center} zoom={16} style={{ height: "100%", width: "100%", borderRadius: "15px", background: '#e0e0e0' }}>
-      
       {latestData && <RecenterAutomatically lat={latestData.latitude} lng={latestData.longitude} />}
-
-      <TileLayer
-        attribution='&copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-      />
-      
-      {/* RENDER GRADIENT DOTS */}
+      <TileLayer attribution='&copy; CARTO' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
       {data.map((reading, index) => {
-        const val = mode === 'temp' ? reading.temp : 
-                    mode === 'hum' ? reading.humidity : 
-                    mode === 'mq9' ? reading.mq9_val : reading.mq135_val;
-
-        // Skip if coordinates are missing
+        const val = mode === 'temp' ? reading.temp : mode === 'hum' ? reading.humidity : mode === 'mq9' ? reading.mq9_val : reading.mq135_val;
         if (!reading.latitude || !reading.longitude) return null;
-
         return (
-          <Marker 
-            key={index}
-            position={[reading.latitude, reading.longitude]} 
-            icon={createGradientIcon(val, mode)}
-            zIndexOffset={-100} // Keep dots behind the location pin
-          >
+          <Marker key={index} position={[reading.latitude, reading.longitude]} icon={createGradientIcon(val, mode)} zIndexOffset={-100}>
             <Popup>
                <b>{new Date(reading.created_at).toLocaleTimeString('pt-BR')}</b><br/>
                {mode.toUpperCase()}: {val ? val.toFixed(2) : '0'}
@@ -101,8 +72,6 @@ export default function Map({ data, mode }) {
           </Marker>
         );
       })}
-      
-      {/* Current Location Marker (Standard Pin) */}
       {latestData && (
         <Marker position={[latestData.latitude, latestData.longitude]}>
           <Popup>Localização Atual</Popup>
