@@ -33,16 +33,12 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSensorsSubmenuOpen, setIsSensorsSubmenuOpen] = useState(false);
   
-  // Dashboard State
   const [mapMode, setMapMode] = useState('temp'); 
   const [activeGraph, setActiveGraph] = useState(null); 
-  
-  // Sensor Page State
   const [selectedDate, setSelectedDate] = useState('');
   const [dhtMode, setDhtMode] = useState('temp'); 
   const [dhtColorActive, setDhtColorActive] = useState(false); 
 
-  // Refs for Scrolling
   const sectionMedidas = useRef(null);
   const sectionMapas = useRef(null);
   const sectionLeitura = useRef(null);
@@ -69,7 +65,6 @@ export default function Home() {
 
   const scrollTo = (ref) => {
     if (ref.current) {
-      // Offset for sticky header (60px) + sticky nav (40px)
       const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
@@ -105,7 +100,6 @@ export default function Home() {
     cardBg: '#faf7f2'
   };
 
-  // Background Logic
   const getPageBackground = () => {
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgba(255, 99, 132, 0.12)' : 'rgba(54, 162, 235, 0.12)';
@@ -115,17 +109,13 @@ export default function Home() {
     return colors.bg;
   };
 
-  // Header Color Logic (Updated)
   const getThemeColor = () => {
-    if (currentView === 'home') return colors.bg; // Match main page background
-    
-    // Sensor pages: Solid colors (Non-transparent)
+    if (currentView === 'home') return colors.bg; 
     if (currentView === 'dht11' && dhtColorActive) {
         return dhtMode === 'temp' ? 'rgb(255, 230, 235)' : 'rgb(230, 240, 255)';
     }
     if (currentView === 'mq9') return 'rgb(255, 240, 220)';
     if (currentView === 'mq135') return 'rgb(220, 250, 250)';
-    
     return '#fff';
   };
 
@@ -175,63 +165,28 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
-        /* DYNAMIC HEADER COLOR */
-        .top-header { 
-            position: fixed; top: 0; left: 0; right: 0; height: 60px; 
-            background: ${getThemeColor()}; 
-            border-bottom: 2px solid rgba(0,0,0,0.1); 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 0 30px; z-index: 2000; 
-            transition: background 0.5s;
-        }
-        
+        .top-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: ${getThemeColor()}; border-bottom: 2px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 2000; transition: background 0.5s; }
         .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
         .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
         
-        .sidebar { 
-            position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; 
-            background: #fff; 
-            box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
-            transform: translateX(${isMenuOpen ? '0' : '-100%'}); 
-            transition: transform 0.3s ease, background 0.5s; 
-            z-index: 1999; padding: 30px 0; 
-        }
-        
+        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; background: ${getThemeColor()}; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transform: translateX(${isMenuOpen ? '0' : '-100%'}); transition: transform 0.3s ease, background 0.5s; z-index: 1999; padding: 30px 0; }
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
-        .nav-item:hover { background: rgba(0,0,0,0.05); }
+        .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
-        .sub-item:hover { color: #000; background: rgba(0,0,0,0.05); }
+        .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        
-        /* STICKY SUB-NAV */
-        .sub-nav-links { 
-            text-align: center; 
-            font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
-            position: sticky; top: 60px; z-index: 1000;
-            background: ${colors.bg}; /* Match background to hide scroll content */
-            padding: 15px 0;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
+        .sub-nav-links { text-align: center; margin-bottom: 40px; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 15px 0; margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* TOP SECTION: MOVED UP (Align Top) */
-        .top-section-container { 
-            min-height: 80vh; 
-            display: flex; flex-direction: column; justify-content: flex-start; /* Moved Up */
-            padding-top: 40px; 
-            padding-bottom: 40px;
-        }
-
+        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 40px; padding-bottom: 40px; }
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 50px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
         
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
-        
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
@@ -254,7 +209,7 @@ export default function Home() {
           .cards-container { 
             grid-template-columns: 1fr 1fr; 
             gap: 15px; 
-            row-gap: 30px; /* More space between rows */
+            row-gap: 50px; /* INCREASED GAP AS REQUESTED */
           }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
@@ -262,7 +217,11 @@ export default function Home() {
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
           /* MOBILE MAP FIX */
-          .rounded-box-map { min-height: 400px; display: block; width: 100%; }
+          .rounded-box-map { 
+             height: 500px !important; /* Force explicit height on mobile */
+             min-height: 500px !important; 
+             display: block; width: 100%; 
+          }
           
           .flex-columns { flex-direction: column; align-items: center; }
           .map-column { width: 100%; flex: auto; max-width: 100%; }
@@ -312,7 +271,6 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SECTION 1: MEDIDAS - Moved Up */}
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
@@ -356,7 +314,7 @@ export default function Home() {
                   </div>
                   <div className="side-graphs-col">
                     <div className="rounded-box" style={{flex: 1}}>
-                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>CLIMA</h3>
+                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>🌦️ CLIMA</h3>
                       <div style={{height: '200px'}}>
                         <Line data={{
                           labels: allLabels,
@@ -368,7 +326,7 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="rounded-box" style={{flex: 1}}>
-                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>GASES</h3>
+                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3>
                       <div style={{height: '200px'}}>
                         <Line data={{
                           labels: allLabels,
