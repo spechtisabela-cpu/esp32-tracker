@@ -16,15 +16,12 @@ const Map = dynamic(() => import('./components/Map'), {
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-// --- ROBUST VALUE FINDER ---
-// This function hunts for the value in the object, converting strings to numbers if needed
+// Função para garantir que lemos o valor, não importa o nome
 const getValue = (obj, keys) => {
   if (!obj) return 0;
   for (const key of keys) {
-    const val = obj[key];
-    if (val !== undefined && val !== null && val !== "") {
-      const num = Number(val);
-      return isNaN(num) ? 0 : num;
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+      return Number(obj[key]);
     }
   }
   return 0;
@@ -50,11 +47,6 @@ export default function Home() {
       const res = await fetch('/api/sensors');
       const json = await res.json();
       if (json.data && Array.isArray(json.data)) {
-        // DEBUG: Check the browser console (F12) to see exactly what variable names are coming!
-        if (json.data.length > 0) {
-            console.log("Raw Data Sample:", json.data[0]); 
-        }
-        
         setRawData(json.data);
         if (!selectedDate && json.data.length > 0) {
            const sorted = [...json.data].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
@@ -80,33 +72,31 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === DATA MAPPING FIX (THE IMPORTANT PART) ===
+  // === AQUI ESTÁ A CORREÇÃO BASEADA NO SEU PRINT ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
     
-    // LATITUDE / LONGITUDE
-    latitude: getValue(d, ['latitude', 'lat', 'Lat']),
-    longitude: getValue(d, ['longitude', 'lng', 'lon', 'Lng']),
+    // GPS
+    latitude: getValue(d, ['latitude', 'lat']),
+    longitude: getValue(d, ['longitude', 'lng']),
     
-    // TEMPERATURE
-    temp: getValue(d, ['temp', 'temperature', 't', 'Temp']),
+    // SENSOR TEMPERATURA (Coluna 'temp' no print)
+    temp: getValue(d, ['temp', 'temperature']),
     
-    // HUMIDITY (Added every possible variation)
-    hum: getValue(d, ['humidity', 'hum', 'h', 'umid', 'Humidity', 'Umid']), 
+    // SENSOR UMIDADE (Coluna 'humidity' no print)
+    // O site vai procurar 'humidity' primeiro!
+    hum: getValue(d, ['humidity', 'hum', 'umid']), 
     
-    // MQ9
-    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw', 'MQ9']),       
+    // SENSOR MQ9 (Coluna 'mq9_val' no print)
+    mq9: getValue(d, ['mq9_val', 'mq9']),       
     
-    // MQ135 (Added every possible variation)
-    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2', 'MQ135']) 
+    // SENSOR MQ135 (Coluna 'mq135_val' no print)
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
   }));
 
-  // Sort and Filter
+  // Lógica de ordenação e filtros (mantida igual)
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  
-  // Use the very latest reading for cards, even if GPS is 0
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
-  
   const graphData = [...cleanData].reverse(); 
   
   const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
