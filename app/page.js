@@ -8,6 +8,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
+// Map Import (SSR False is Critical)
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
   loading: () => <div style={{height: '100%', width: '100%', background: '#ddd', borderRadius: '15px', display:'flex', alignItems:'center', justifyContent:'center'}}>Carregando Mapa...</div>
@@ -26,6 +27,18 @@ const ChevronDown = () => (
     <polyline points="6 9 12 15 18 9"></polyline>
   </svg>
 );
+
+// --- FUNÇÃO DE LIMPEZA ABSOLUTA ---
+// Essa função vai caçar o valor onde quer que ele esteja
+const getValue = (obj, keys) => {
+  if (!obj) return 0;
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+      return Number(obj[key]);
+    }
+  }
+  return 0;
+};
 
 export default function Home() {
   const [rawData, setRawData] = useState([]);
@@ -49,16 +62,17 @@ export default function Home() {
       const json = await res.json();
       if (json.data && Array.isArray(json.data)) {
         setRawData(json.data);
-        
-        // DEBUG: Veja no Console (F12) o que chegou
-        console.log("DADOS CHEGANDO:", json.data[0]); 
+        // Debug no Console do navegador para você ver o que chegou
+        console.log("Último dado recebido:", json.data[0]); 
 
         if (!selectedDate && json.data.length > 0) {
-           const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
+           // Tenta pegar a data mais recente
+           const sorted = [...json.data].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+           const latestDate = new Date(sorted[0].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
         }
       } 
-    } catch (e) { console.error("Erro Fetch:", e); }
+    } catch (e) { console.error(e); }
   }
 
   useEffect(() => {
@@ -69,7 +83,7 @@ export default function Home() {
 
   const scrollTo = (ref) => {
     if (ref.current) {
-      const y = ref.current.getBoundingClientRect().top + window.scrollY - 120;
+      const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
   };
@@ -77,33 +91,28 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // =========================================================
-  // >>> CORREÇÃO CRÍTICA DE DADOS <<<
-  // =========================================================
-  
-  // 1. Limpeza e Mapeamento Explícito
-  const processedData = rawData.map(d => ({
+  // --- PREPARAÇÃO DOS DADOS (BLINDADA) ---
+  const cleanData = rawData.map(d => ({
     created_at: d.created_at,
     latitude: Number(d.latitude || 0),
     longitude: Number(d.longitude || 0),
-    // Nomes exatos da sua Database
-    temp: d.temp !== undefined ? Number(d.temp) : 0,
-    hum: d.humidity !== undefined ? Number(d.humidity) : 0, // humidity -> hum
-    mq9: d.mq9_val !== undefined ? Number(d.mq9_val) : 0,   // mq9_val -> mq9
-    mq135: d.mq135_val !== undefined ? Number(d.mq135_val) : 0 // mq135_val -> mq135
+    // Lista de TODOS os nomes possíveis que podem vir do banco
+    temp: getValue(d, ['temp', 'temperature', 't']),
+    hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2']) 
   }));
 
-  // 2. ORDENAÇÃO FORÇADA (Mais novo primeiro)
-  // Isso garante que cleanData[0] é o dado de AGORA, não de ontem.
-  const cleanData = processedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // Ordena por data (Mais recente primeiro)
+  cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  // 3. Pegar o mais recente
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
-
-  // 4. Preparar Gráficos (Inverter para ficar Antigo -> Novo na linha do tempo)
+  
+  // Inverte para gráficos (Cronológico: Antigo -> Novo)
   const graphData = [...cleanData].reverse(); 
   
   const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+  
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
@@ -185,40 +194,24 @@ export default function Home() {
       <style jsx global>{`
         body { margin: 0; background-color: ${getPageBackground()}; font-family: 'Cerebri Sans', 'Arial', sans-serif; color: ${colors.text}; transition: background-color 0.5s; }
         
-        .top-header { 
-            position: fixed; top: 0; left: 0; right: 0; height: 60px; 
-            background: ${getThemeColor()}; 
-            border-bottom: 2px solid rgba(0,0,0,0.1); 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 0 30px; z-index: 2000; 
-            transition: background 0.5s;
-        }
-        
+        .top-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: ${getThemeColor()}; border-bottom: 2px solid rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 2000; transition: background 0.5s; }
         .header-title { font-weight: 900; font-size: 1.1em; text-align: center; position: absolute; left: 0; right: 0; pointer-events: none; }
         .header-right { font-weight: 800; font-size: 0.9em; z-index: 2001; }
         
-        .sidebar { 
-            position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; 
-            background: ${getThemeColor()}; 
-            box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
-            transform: translateX(${isMenuOpen ? '0' : '-100%'}); 
-            transition: transform 0.3s ease, background 0.5s; 
-            z-index: 1999; padding: 30px 0; 
-        }
-        
+        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 280px; background: ${getThemeColor()}; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transform: translateX(${isMenuOpen ? '0' : '-100%'}); transition: transform 0.3s ease, background 0.5s; z-index: 1999; padding: 30px 0; }
         .nav-item { padding: 15px 30px; font-weight: 800; color: ${colors.text}; cursor: pointer; display: flex; justify-content: space-between; }
         .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
-        .content-wrapper { padding: 85px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
+        .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
         
         .sub-nav-links { 
             text-align: center; 
             font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
             position: sticky; top: 60px; z-index: 1000; 
             background: ${colors.bg}; 
-            padding: 5px 0; margin-bottom: 10px;
+            padding: 15px 0; margin-bottom: 20px; 
             border-bottom: 1px solid rgba(0,0,0,0.05);
         }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
@@ -239,9 +232,9 @@ export default function Home() {
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
         
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
+        
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
-        
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
         .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
         .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
@@ -252,30 +245,20 @@ export default function Home() {
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
 
         @media (max-width: 900px) {
-          .content-wrapper { padding: 80px 4% 40px 4%; }
+          .content-wrapper { padding: 90px 4% 40px 4%; }
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
           .main-title br { display: block; }
           .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* CARDS SPACING */
-          .cards-container { 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-            row-gap: 50px; 
-          }
+          .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
           
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* FIXED MAP MOBILE */
-          .rounded-box-map { 
-             height: 500px !important; 
-             min-height: 500px !important; 
-             display: block !important; 
-             width: 100% !important; 
-          }
+          /* Fixed Map height for Mobile */
+          .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; }
           
           .flex-columns { flex-direction: column; align-items: center; width: 100%; }
           .map-column { width: 100%; flex: auto; max-width: 100%; }
