@@ -16,12 +16,13 @@ const Map = dynamic(() => import('./components/Map'), {
 const MenuIcon = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#54504a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
 const ChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 
-// Função para garantir que lemos o valor, não importa o nome
 const getValue = (obj, keys) => {
   if (!obj) return 0;
   for (const key of keys) {
-    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
-      return Number(obj[key]);
+    const val = obj[key];
+    if (val !== undefined && val !== null && val !== "") {
+      const num = Number(val);
+      return isNaN(num) ? 0 : num;
     }
   }
   return 0;
@@ -44,8 +45,10 @@ export default function Home() {
 
   async function fetchData() {
     try {
-      const res = await fetch('/api/sensors');
+      // === FIX 1: FORCE NO CACHE ===
+      const res = await fetch('/api/sensors', { cache: 'no-store' });
       const json = await res.json();
+      
       if (json.data && Array.isArray(json.data)) {
         setRawData(json.data);
         if (!selectedDate && json.data.length > 0) {
@@ -72,29 +75,18 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // === AQUI ESTÁ A CORREÇÃO BASEADA NO SEU PRINT ===
+  // === DATA MAPPING ===
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
-    
-    // GPS
+    // Try EVERY possible name
     latitude: getValue(d, ['latitude', 'lat']),
     longitude: getValue(d, ['longitude', 'lng']),
-    
-    // SENSOR TEMPERATURA (Coluna 'temp' no print)
-    temp: getValue(d, ['temp', 'temperature']),
-    
-    // SENSOR UMIDADE (Coluna 'humidity' no print)
-    // O site vai procurar 'humidity' primeiro!
-    hum: getValue(d, ['humidity', 'hum', 'umid']), 
-    
-    // SENSOR MQ9 (Coluna 'mq9_val' no print)
-    mq9: getValue(d, ['mq9_val', 'mq9']),       
-    
-    // SENSOR MQ135 (Coluna 'mq135_val' no print)
-    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
+    temp: getValue(d, ['temp', 'temperature', 't']),
+    hum: getValue(d, ['humidity', 'hum', 'h', 'umid']), 
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2']) 
   }));
 
-  // Lógica de ordenação e filtros (mantida igual)
   cleanData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
   const graphData = [...cleanData].reverse(); 
@@ -210,6 +202,13 @@ export default function Home() {
                 </div>
             </div>
             <hr className="soft-line" />
+            
+            {/* === THE DEBUG BOX: SEND ME A PHOTO OF THIS IF IT IS STILL 0 === */}
+            <div style={{background:'#000', color:'#0f0', padding:'20px', borderRadius:'10px', margin:'20px 0', fontFamily:'monospace', overflow:'auto', maxHeight:'200px'}}>
+               <h3 style={{marginTop:0}}>DEBUG AREA (LAST DATA):</h3>
+               <pre>{JSON.stringify(rawData[0], null, 2)}</pre>
+            </div>
+            
             <div ref={sectionMapas} className="full-screen-section" style={{background: 'rgba(255,255,255,0.5)', borderRadius:'30px', padding:'30px'}}>
                 <div className="flex-columns">
                   <div className="map-column">
