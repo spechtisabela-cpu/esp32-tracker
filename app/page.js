@@ -27,13 +27,12 @@ const ChevronDown = () => (
   </svg>
 );
 
-// --- FUNÇÃO AUXILIAR PARA ENCONTRAR DADOS ---
-// Tenta encontrar o valor em várias chaves possíveis
+// Helper function to find data regardless of key name
 const getValue = (obj, possibleKeys) => {
   if (!obj) return 0;
   for (const key of possibleKeys) {
     if (obj[key] !== undefined && obj[key] !== null) {
-      return Number(obj[key]); // Garante que é número
+      return Number(obj[key]); 
     }
   }
   return 0;
@@ -61,12 +60,8 @@ export default function Home() {
       const json = await res.json();
       if (json.data) {
         setRawData(json.data);
-        
-        // --- DEBUG: ISSO VAI MOSTRAR NO CONSOLE O QUE ESTÁ CHEGANDO ---
-        console.log("Última Leitura Recebida:", json.data[0]); 
-        
         if (!selectedDate && json.data.length > 0) {
-           const latestDate = new Date(json.data[0].created_at).toLocaleDateString('pt-BR');
+           const latestDate = new Date(json.data[json.data.length - 1].created_at).toLocaleDateString('pt-BR');
            setSelectedDate(latestDate);
         }
       } 
@@ -89,26 +84,40 @@ export default function Home() {
   const handleDhtChange = (mode) => { setDhtMode(mode); setDhtColorActive(true); };
   const navigate = (view) => { setCurrentView(view); setIsMenuOpen(false); setDhtColorActive(false); };
 
-  // --- PREPARAÇÃO DOS DADOS (BLINDADA) ---
+  // --- 1. CLEAN DATA ---
   const cleanData = rawData.map(d => ({
     created_at: d.created_at,
     latitude: Number(d.latitude || 0),
     longitude: Number(d.longitude || 0),
-    // Procura por TODAS as variações de nome possíveis
-    temp: getValue(d, ['temp', 'temperature', 't']),
-    hum: getValue(d, ['humidity', 'hum', 'umidade', 'h']),
-    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),
-    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2', 'co2', 'mq135_co'])
+    // Mapping keys from your DB
+    temp: getValue(d, ['temp', 'temperature']),
+    hum: getValue(d, ['humidity', 'hum']), 
+    mq9: getValue(d, ['mq9_val', 'mq9', 'mq9_raw']),       
+    mq135: getValue(d, ['mq135_val', 'mq135', 'mq135_co2']) 
   }));
 
-  const latest = cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 };
+  // --- 2. FIX: GET LATEST (REVERSE FIRST) ---
+  // We reverse the array so [0] is the NEWEST reading
   const graphData = [...cleanData].reverse(); 
   
-  const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
+  // Now graphData[0] is the actual latest reading
+  const latestRaw = graphData.length > 0 ? graphData[0] : {};
   
+  const latest = {
+    temp: latestRaw.temp || 0,
+    hum: latestRaw.hum || 0,
+    mq9: latestRaw.mq9 || 0,
+    mq135: latestRaw.mq135 || 0,
+    latitude: latestRaw.latitude || 0, 
+    longitude: latestRaw.longitude || 0
+  };
+
+  const availableDates = [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))];
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  
+  // All labels for main page
   const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const colors = {
@@ -196,25 +205,24 @@ export default function Home() {
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
-        .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
+        .content-wrapper { padding: 85px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
         
         .sub-nav-links { 
             text-align: center; 
             font-size: 0.85em; color: ${colors.text}; font-weight: bold; 
             position: sticky; top: 60px; z-index: 1000; 
             background: ${colors.bg}; 
-            padding: 15px 0; margin-bottom: 20px; 
+            padding: 5px 0; margin-bottom: 10px;
             border-bottom: 1px solid rgba(0,0,0,0.05);
         }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* FIRST SECTION (MEDIDAS) - MOVED UP AS REQUESTED */
         .top-section-container { 
             min-height: 80vh; 
             display: flex; flex-direction: column; 
             justify-content: flex-start; /* Aligned Top */
-            padding-top: 60px;           /* Less padding to be higher */
+            padding-top: 60px; 
             padding-bottom: 40px; 
         }
 
@@ -224,7 +232,6 @@ export default function Home() {
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
         
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
-        
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
         
@@ -238,30 +245,20 @@ export default function Home() {
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
 
         @media (max-width: 900px) {
-          .content-wrapper { padding: 90px 4% 40px 4%; }
+          .content-wrapper { padding: 80px 4% 40px 4%; }
           .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; }
           .header-right { display: none; }
           .main-title br { display: block; }
           .main-title { font-size: 1.8rem; margin-bottom: 30px; }
           
-          /* MOBILE CARDS SPACING */
-          .cards-container { 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-            row-gap: 50px; 
-          }
+          .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; }
           .cards-container > div { min-height: 110px; padding: 10px; }
           .cards-container .reading-val { font-size: 1.4em; }
           
           .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; }
           
-          /* MAIN MAP MOBILE FIX */
-          .rounded-box-map { 
-             height: 500px !important; 
-             min-height: 500px !important; 
-             display: block !important; 
-             width: 100% !important; 
-          }
+          /* Fixed Map height for Mobile */
+          .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; }
           
           .flex-columns { flex-direction: column; align-items: center; width: 100%; }
           .map-column { width: 100%; flex: auto; max-width: 100%; }
