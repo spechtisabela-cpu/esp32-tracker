@@ -8,10 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "15.1.9",
+    "next": "15.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "pg": "^8.13.0",
+    "pg": "^8.11.3",
     "chart.js": "^4.4.1",
     "leaflet": "^1.9.4",
     "react-chartjs-2": "^5.2.0",
