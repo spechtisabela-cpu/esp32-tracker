@@ -153,14 +153,36 @@ export default function Home() {
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
-        /* AUMENTADO PADDING-TOP (100px) para descer o conteúdo */
-        .content-wrapper { padding: 100px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        .sub-nav-links { text-align: center; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 15px 0; margin-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .content-wrapper { padding: 80px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
+        
+        /* NAV BAR: Mais fina (8px) e mais colada ao topo */
+        .sub-nav-links { 
+            text-align: center; 
+            font-size: 0.85em; 
+            color: ${colors.text}; 
+            font-weight: bold; 
+            position: sticky; 
+            top: 60px; 
+            z-index: 1000; 
+            background: ${colors.bg}; 
+            padding: 8px 0; /* METADE DA ALTURA ANTERIOR */
+            margin-bottom: 0px; /* COLADO NO CONTEÚDO */
+            border-bottom: 1px solid rgba(0,0,0,0.05); 
+        }
+        
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* AUMENTADO PADDING-TOP (40px) para separar do menu */
-        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 40px; padding-bottom: 40px; }
+        /* TITLE SECTION: Padding de 30px (Tiniest bit down) */
+        .top-section-container { 
+            min-height: 80vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-start; 
+            padding-top: 30px; /* ESPAÇO PEQUENO PARA O TÍTULO */
+            padding-bottom: 40px; 
+        }
+        
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 40px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
@@ -174,7 +196,7 @@ export default function Home() {
         .sensor-divider { width: 100px; height: 3px; background: #000; margin: 15px auto 0 auto; opacity: 0.3; }
         .sensor-desc-box { background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #fff; max-width: 800px; margin: 0 auto 20px auto; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
-        @media (max-width: 900px) { .content-wrapper { padding: 90px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; min-height: 250px; } .sensor-layout { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .content-wrapper { padding: 80px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; min-height: 250px; } .sensor-layout { grid-template-columns: 1fr; } }
         @media (min-width: 901px) { .main-title br { display: none; } }
         @media (max-width: 500px) { .side-graphs-col { flex-direction: column; } }
       `}</style>
@@ -202,26 +224,7 @@ export default function Home() {
               <span className="sub-nav-item" onClick={() => scrollTo(sectionLeitura)}>LEITURA POR SENSOR</span>
             </div>
 
-            {/* SELETOR DE DATA MOVIDO PARA CÁ (TOPO) */}
-            <div style={{margin: '0 auto 20px auto', textAlign:'center'}}>
-              <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
-              <select 
-                value={selectedDate} 
-                onChange={(e) => setSelectedDate(e.target.value)} 
-                style={{
-                  padding: '8px 12px', 
-                  borderRadius: '10px', 
-                  border: '1px solid #ccc', 
-                  fontSize: '0.9rem', 
-                  fontWeight: 'bold', 
-                  color: colors.text, 
-                  backgroundColor: '#fff', 
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                }}
-              >
-                {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
-              </select>
-            </div>
+            {/* SELETOR DE DATA REMOVIDO DAQUI (First Section) CONFORME PEDIDO */}
 
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
@@ -241,7 +244,7 @@ export default function Home() {
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
-                    {/* SELETOR DE DATA: NA DIREITA, ACIMA DO CLIMA */}
+                    {/* SELETOR DE DATA: DIREITA, ACIMA DO CLIMA */}
                     <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', marginBottom:'-15px'}}>
                         <label className="bold-text" style={{marginRight: '10px', fontSize: '0.8em'}}>DATA:</label>
                         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '5px 10px', borderRadius: '10px', border: '1px solid #ccc', fontSize: '0.9rem', fontWeight: 'bold', color: colors.text, background:'#fff'}}>
@@ -258,7 +261,7 @@ export default function Home() {
             <div ref={sectionLeitura} className="full-screen-section" style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
               
-              {/* SELETOR DE DATA TAMBÉM NA LEITURA POR SENSOR */}
+              {/* SELETOR DE DATA: EMBAIXO DO TÍTULO, ANTES DOS BOTÕES */}
               <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
                 <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
                 <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
