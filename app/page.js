@@ -26,9 +26,6 @@ const getValue = (obj, keys) => {
   return 0;
 };
 
-// Helper to clean 0s from graphs
-const filterZero = (val) => (val === 0 || val === null ? null : val);
-
 export default function Home() {
   const [rawData, setRawData] = useState([]);
   const [currentView, setCurrentView] = useState('home'); 
@@ -85,17 +82,12 @@ export default function Home() {
   }, [cleanData, isFirstLoad]);
 
   const latest = useMemo(() => cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 }, [cleanData]);
-  
   const graphData = useMemo(() => [...cleanData].reverse(), [cleanData]);
-  
   const availableDates = useMemo(() => [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))], [cleanData]);
-  
-  // Filter data by selected date
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
-  
-  // Create labels based on filtered data
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
+  const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
   const scrollTo = (ref) => {
     if (ref.current) {
@@ -126,20 +118,7 @@ export default function Home() {
     return '#fff';
   };
 
-  // Simplified options for the tiny graphs
-  const tinyGraphOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } }, // No legend needed for single line
-    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } },
-    elements: { point: { radius: 0 } } 
-  };
-
-  const standardOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } },
-    scales: { x: { display: false }, y: { display: true } } 
-  };
-
+  const overviewOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } }, scales: { x: { display: false }, y: { display: true } } };
   const detailOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { display: true } }, plugins: { legend: { display: true, labels: { font: { size: 14 } } } } };
 
   const renderMapScale = (modeOverride = null) => {
@@ -158,7 +137,23 @@ export default function Home() {
     );
   };
 
-  const getCardStyle = (color) => ({ backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), borderRadius: '15px', padding: '10px 15px', border: `2px solid ${color}`, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100px', color: colors.text, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' });
+  // 2. THICKER BORDER (Changed to 4px)
+  const getCardStyle = (color) => ({ 
+    backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), 
+    borderRadius: '15px', 
+    padding: '10px 15px', 
+    border: `4px solid ${color}`, // BORDER IS NOW THICKER
+    textAlign: 'center', 
+    height: '100%', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    minHeight: '100px', 
+    color: colors.text, 
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)' 
+  });
+
   const btnStyle = (key, color, activeKey) => ({ padding: '10px 20px', border: 'none', backgroundColor: activeKey === key ? color : '#e0e0e0', color: activeKey === key ? '#fff' : '#54504a', fontWeight: '900', cursor: 'pointer', borderRadius: '15px', fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px', boxShadow: activeKey === key ? `0 4px 10px ${color}66` : 'none' });
 
   return (
@@ -173,11 +168,37 @@ export default function Home() {
         .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
+        
         .content-wrapper { padding: 80px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        .sub-nav-links { text-align: center; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 8px 0; margin-bottom: 0px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        
+        /* 1. TIGHTER SUB-NAV (Reduced Padding) */
+        .sub-nav-links { 
+            text-align: center; 
+            font-size: 0.85em; 
+            color: ${colors.text}; 
+            font-weight: bold; 
+            position: sticky; 
+            top: 60px; 
+            z-index: 1000; 
+            background: ${colors.bg}; 
+            padding: 5px 0; /* SMALLER PADDING */
+            margin-bottom: 0px; 
+            border-bottom: 1px solid rgba(0,0,0,0.05); 
+        }
+        
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
-        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 100px; padding-bottom: 40px; }
+        
+        /* 3. PUSH DOWN TITLE (Increased Padding Top) */
+        .top-section-container { 
+            min-height: 80vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-start; 
+            padding-top: 130px; /* MOVED DOWN */
+            padding-bottom: 40px; 
+        }
+        
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 40px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
@@ -187,12 +208,11 @@ export default function Home() {
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
         .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
         .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
-        .split-graphs-row { display: flex; gap: 20px; height: 200px; width: 100%; }
         .sensor-title-container { text-align: center; margin-bottom: 40px; margin-top: 40px; }
         .sensor-divider { width: 100px; height: 3px; background: #000; margin: 15px auto 0 auto; opacity: 0.3; }
         .sensor-desc-box { background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #fff; max-width: 800px; margin: 0 auto 20px auto; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
-        @media (max-width: 900px) { .content-wrapper { padding: 80px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; } .split-graphs-row { flex-direction: column; height: auto; } .split-graphs-row > div { height: 200px; } .sensor-layout { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .content-wrapper { padding: 80px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; min-height: 250px; } .sensor-layout { grid-template-columns: 1fr; } }
         @media (min-width: 901px) { .main-title br { display: none; } }
         @media (max-width: 500px) { .side-graphs-col { flex-direction: column; } }
       `}</style>
@@ -223,10 +243,11 @@ export default function Home() {
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
-                  <div style={getCardStyle(colors.temp)}><div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Temperatura</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.temp?.toFixed(2)}°C</div></div>
-                  <div style={getCardStyle(colors.hum)}><div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Umidade</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.hum?.toFixed(2)}%</div></div>
-                  <div style={getCardStyle(colors.mq9)}><div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Gás (MQ9)</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9?.toFixed(2)}</div></div>
-                  <div style={getCardStyle(colors.mq135)}><div style={{fontWeight: '900', fontSize: '0.9em', textTransform: 'uppercase', marginBottom: '5px'}}>Ar (MQ135)</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq135?.toFixed(2)}</div></div>
+                  {/* 4. BIGGER TITLES IN BOXES (1.1em) */}
+                  <div style={getCardStyle(colors.temp)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Temperatura</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.temp?.toFixed(2)}°C</div></div>
+                  <div style={getCardStyle(colors.hum)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Umidade</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.hum?.toFixed(2)}%</div></div>
+                  <div style={getCardStyle(colors.mq9)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Gás (MQ9)</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9?.toFixed(2)}</div></div>
+                  <div style={getCardStyle(colors.mq135)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Ar (MQ135)</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq135?.toFixed(2)}</div></div>
                 </div>
             </div>
             <hr className="soft-line" />
@@ -234,12 +255,10 @@ export default function Home() {
                 <div className="flex-columns">
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
-                    {/* MAPA AGORA RECEBE DADOS FILTRADOS POR DATA (filteredGraphData) */}
-                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={filteredGraphData} mode={mapMode} />{renderMapScale()}</div>
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
-                    {/* SELETOR DE DATA */}
                     <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', marginBottom:'-15px'}}>
                         <label className="bold-text" style={{marginRight: '10px', fontSize: '0.8em'}}>DATA:</label>
                         <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '5px 10px', borderRadius: '10px', border: '1px solid #ccc', fontSize: '0.9rem', fontWeight: 'bold', color: colors.text, background:'#fff'}}>
@@ -247,44 +266,20 @@ export default function Home() {
                         </select>
                     </div>
 
-                    {/* TWO TINY SEPARATE GRAPHS (TEMP & HUM) */}
-                    <div className="split-graphs-row">
-                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.temp, textAlign: 'center'}}>🌡️ TEMP</h4>
-                        <div style={{flex: 1, width: '100%'}}>
-                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
-                        </div>
-                      </div>
-                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.hum, textAlign: 'center'}}>💧 UMID</h4>
-                        <div style={{flex: 1, width: '100%'}}>
-                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* GASES GRAPH */}
-                    <div className="rounded-box" style={{flex: 1}}>
-                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3>
-                      <div style={{height: '200px'}}>
-                        <Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9 🔥 (PPM)', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 }, { label: 'MQ135 💨 (PPM)', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }]}} options={standardOptions} />
-                      </div>
-                    </div>
+                    <div className="rounded-box" style={{flex: 1}}><h3 className="bold-text" style={{margin: '0 0 15px 0'}}>🌦️ CLIMA</h3><div style={{height: '200px'}}><Line data={{labels: filteredLabels, datasets: [{ label: 'Temp 🌡️ (°C)', data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 }, { label: 'Umid 💧 (%)', data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }]}} options={overviewOptions} /></div></div>
+                    <div className="rounded-box" style={{flex: 1}}><h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3><div style={{height: '200px'}}><Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9 🔥 (PPM)', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 }, { label: 'MQ135 💨 (PPM)', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }]}} options={overviewOptions} /></div></div>
                   </div>
                 </div>
             </div>
             <hr className="soft-line" />
             <div ref={sectionLeitura} className="full-screen-section" style={{textAlign: 'center'}}>
               <h2 className="bold-text" style={{fontSize: '2em', textTransform: 'uppercase', marginBottom: '30px'}}>LEITURA POR SENSOR</h2>
-              
-              {/* SELETOR DE DATA PARA GRÁFICO GRANDE */}
               <div style={{margin: '0 auto 30px auto', textAlign:'center'}}>
                 <label className="bold-text" style={{marginRight: '10px'}}>DATA:</label>
                 <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{padding: '10px', borderRadius: '10px', border: '2px solid #ddd', fontSize: '1rem', fontWeight: 'bold', color: colors.text}}>
                   {availableDates.map(date => <option key={date} value={date}>{date}</option>)}
                 </select>
               </div>
-
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
               {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : activeGraph === 'hum' ? filteredGraphData.map(d => filterZero(d.hum)) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => filterZero(d.mq135)) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
@@ -325,7 +320,7 @@ export default function Home() {
                 ) : ( <p style={{textAlign:'center', color:'#999', marginTop:'30px', fontStyle:'italic'}}>Selecione uma leitura acima para visualizar.</p> )
             ) : (
                 <div className="sensor-layout">
-                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => filterZero(d.mq135)), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
+                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => d.mq135), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
                     <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3><Map data={filteredGraphData} mode={currentView} />{renderMapScale(currentView)}</div>
                 </div>
             )}
