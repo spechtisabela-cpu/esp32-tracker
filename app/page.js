@@ -121,23 +121,10 @@ export default function Home() {
     return '#fff';
   };
 
-  // Compact Graph Options (Small font, no grid x)
-  const compactGraphOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } }, 
-    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 }, color: '#54504a' } } },
-    elements: { point: { radius: 0 } } 
-  };
-
-  // Standard Options for Gases (with Legend)
-  const gasesOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 8, font: { size: 10, weight: 'bold' }, color: '#54504a' } } },
-    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 }, color: '#54504a' } } },
-    elements: { point: { radius: 0 } } 
-  };
-
+  const overviewOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } }, scales: { x: { display: false }, y: { display: true } } };
   const detailOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { display: true } }, plugins: { legend: { display: true, labels: { font: { size: 14 } } } } };
+  const tinyGraphOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } }, elements: { point: { radius: 0 } } };
+  const standardOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } }, scales: { x: { display: false }, y: { display: true } } };
 
   const renderMapScale = (modeOverride = null) => {
     const currentMode = modeOverride || mapMode;
@@ -206,20 +193,12 @@ export default function Home() {
         .soft-line { height: 2px; border: 0; background: linear-gradient(90deg, rgba(84,80,74,0), rgba(84,80,74,0.4), rgba(84,80,74,0)); margin: 50px 0; }
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
+        .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
+        .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
+        .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
         
-        /* === UPDATED LAYOUT === */
-        /* Forces the row to have a specific height (650px) so map matches 3 graphs */
-        .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 650px; width: 100%; }
+        .split-graphs-row { display: flex; gap: 20px; height: 200px; width: 100%; }
         
-        /* Map takes 70% width */
-        .map-column { flex: 2.5; min-width: 500px; display: flex; flex-direction: column; height: 100%; }
-        
-        /* Right Column (Graphs) takes 30% width */
-        .side-graphs-col { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 20px; height: 100%; }
-        
-        /* Individual Graph Box height = 33% of the column (minus gaps) */
-        .graph-box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-
         .sensor-title-container { text-align: center; margin-bottom: 40px; margin-top: 40px; }
         .sensor-divider { width: 100px; height: 3px; background: #000; margin: 15px auto 0 auto; opacity: 0.3; }
         .sensor-desc-box { background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #fff; max-width: 800px; margin: 0 auto 20px auto; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
@@ -235,14 +214,16 @@ export default function Home() {
             .cards-container > div { min-height: 110px; padding: 10px; } 
             .cards-container .reading-val { font-size: 1.4em; } 
             
-            /* RESET HEIGHTS FOR MOBILE */
             .flex-columns { height: auto; flex-direction: column; align-items: center; width: 100%; } 
             .map-column { width: 100%; flex: auto; max-width: 100%; height: 500px; } 
             .side-graphs-col { width: 100%; margin-top: 30px; height: auto; gap: 30px; }
-            .graph-box { height: 250px; }
+            .split-graphs-row { flex-direction: column; height: auto; } 
+            .split-graphs-row > div { height: 200px; } 
             
-            .rounded-box-map { height: 100% !important; min-height: 400px !important; } 
+            /* RESET HEIGHTS FOR SENSOR PAGE MOBILE */
             .sensor-layout { grid-template-columns: 1fr; } 
+            .sensor-layout .rounded-box { height: auto !important; }
+            .sensor-layout .rounded-box-map { height: 400px !important; }
         }
         @media (min-width: 901px) { .main-title br { display: none; } }
       `}</style>
@@ -282,15 +263,11 @@ export default function Home() {
             <hr className="soft-line" />
             <div ref={sectionMapas} className="full-screen-section" style={{background: 'rgba(255,255,255,0.5)', borderRadius:'30px', padding:'30px'}}>
                 <div className="flex-columns">
-                  
-                  {/* === LEFT COLUMN: MAP (100% Height) === */}
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
-                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '0'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={cleanData} mode={mapMode} />{renderMapScale()}</div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
-                  
-                  {/* === RIGHT COLUMN: 3 STACKED GRAPHS (Matches Map Height) === */}
                   <div className="side-graphs-col">
                     <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', marginBottom:'-15px'}}>
                         <label className="bold-text" style={{marginRight: '10px', fontSize: '0.8em'}}>DATA:</label>
@@ -299,27 +276,25 @@ export default function Home() {
                         </select>
                     </div>
 
-                    {/* 1. TEMP GRAPH */}
-                    <div className="rounded-box graph-box">
-                      <h3 className="bold-text" style={{margin: '0 0 5px 0', fontSize: '1em', color: colors.text}}>🌡️ TEMP</h3>
-                      <div style={{flex: 1, width: '100%', minHeight: 0}}>
-                        <Line data={{labels: filteredLabels, datasets: [{ label: 'Temp', data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                    <div className="split-graphs-row">
+                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.temp, textAlign: 'center'}}>🌡️ TEMP</h4>
+                        <div style={{flex: 1, width: '100%'}}>
+                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                        </div>
+                      </div>
+                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.hum, textAlign: 'center'}}>💧 UMID</h4>
+                        <div style={{flex: 1, width: '100%'}}>
+                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                        </div>
                       </div>
                     </div>
 
-                    {/* 2. HUMIDITY GRAPH */}
-                    <div className="rounded-box graph-box">
-                      <h3 className="bold-text" style={{margin: '0 0 5px 0', fontSize: '1em', color: colors.text}}>💧 UMID</h3>
-                      <div style={{flex: 1, width: '100%', minHeight: 0}}>
-                        <Line data={{labels: filteredLabels, datasets: [{ label: 'Umid', data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
-                      </div>
-                    </div>
-
-                    {/* 3. GASES GRAPH */}
-                    <div className="rounded-box graph-box">
-                      <h3 className="bold-text" style={{margin: '0 0 5px 0', fontSize: '1em', color: colors.text}}>⚠️ GASES</h3>
-                      <div style={{flex: 1, width: '100%', minHeight: 0}}>
-                        <Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2, pointRadius: 0 }, { label: 'MQ135', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2, pointRadius: 0 }]}} options={gasesOptions} />
+                    <div className="rounded-box" style={{flex: 1}}>
+                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3>
+                      <div style={{height: '200px'}}>
+                        <Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9 🔥 (PPM)', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 }, { label: 'MQ135 💨 (PPM)', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }]}} options={standardOptions} />
                       </div>
                     </div>
                   </div>
@@ -346,6 +321,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* SPECIFIC SENSOR VIEW - FIXED SYMMETRY */}
         {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
           <div>
             <div className="sensor-title-container"><h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', margin: 0}}>{currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}</h1><div className="sensor-divider"></div></div>
@@ -368,14 +344,44 @@ export default function Home() {
             {currentView === 'dht11' ? (
                 dhtColorActive ? (
                     <div className="sensor-layout">
-                        <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{dhtMode === 'temp' ? 'TEMPERATURA (°C)' : 'UMIDADE (%)'}</h3><h3 className="bold-text" style={{color: dhtMode === 'temp' ? colors.temp : colors.hum}}>Última: {dhtMode === 'temp' ? (latest.temp?.toFixed(2) || '0') + '°C' : (latest.hum?.toFixed(2) || '0') + '%'}</h3></div><div style={{height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: dhtMode === 'temp' ? 'Temperatura' : 'Umidade', data: dhtMode === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : filteredGraphData.map(d => filterZero(d.hum)), borderColor: dhtMode === 'temp' ? colors.temp : colors.hum, tension: 0.3 }]}} options={detailOptions} /></div></div>
-                        <div className="rounded-box rounded-box-map" style={{height: '400px', minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3><Map data={cleanData} mode={dhtMode} />{renderMapScale(dhtMode)}</div>
+                        <div className="rounded-box">
+                            <div style={{display:'flex', justifyContent:'space-between'}}>
+                                <h3 className="bold-text">{dhtMode === 'temp' ? 'TEMPERATURA (°C)' : 'UMIDADE (%)'}</h3>
+                                <h3 className="bold-text" style={{color: dhtMode === 'temp' ? colors.temp : colors.hum}}>Última: {dhtMode === 'temp' ? (latest.temp?.toFixed(2) || '0') + '°C' : (latest.hum?.toFixed(2) || '0') + '%'}</h3>
+                            </div>
+                            <div style={{height: '400px'}}>
+                                <Line data={{labels: filteredLabels, datasets: [{ label: dhtMode === 'temp' ? 'Temperatura' : 'Umidade', data: dhtMode === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : filteredGraphData.map(d => filterZero(d.hum)), borderColor: dhtMode === 'temp' ? colors.temp : colors.hum, tension: 0.3 }]}} options={detailOptions} />
+                            </div>
+                        </div>
+                        {/* FIXED: Removed fixed style from rounded-box, put height on Map wrapper */}
+                        <div className="rounded-box">
+                            <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3>
+                            <div style={{height: '400px', width: '100%', position: 'relative', borderRadius: '15px', overflow: 'hidden'}}>
+                                <Map data={cleanData} mode={dhtMode} />
+                                {renderMapScale(dhtMode)}
+                            </div>
+                        </div>
                     </div>
                 ) : ( <p style={{textAlign:'center', color:'#999', marginTop:'30px', fontStyle:'italic'}}>Selecione uma leitura acima para visualizar.</p> )
             ) : (
                 <div className="sensor-layout">
-                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => filterZero(d.mq135)), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
-                    <div className="rounded-box rounded-box-map" style={{height: '400px', minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3><Map data={cleanData} mode={currentView} />{renderMapScale(currentView)}</div>
+                    <div className="rounded-box">
+                        <div style={{display:'flex', justifyContent:'space-between'}}>
+                            <h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3>
+                            <h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3>
+                        </div>
+                        <div style={{height: '400px'}}>
+                            <Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => filterZero(d.mq135)), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} />
+                        </div>
+                    </div>
+                    {/* FIXED: Removed fixed style from rounded-box, put height on Map wrapper */}
+                    <div className="rounded-box">
+                        <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3>
+                        <div style={{height: '400px', width: '100%', position: 'relative', borderRadius: '15px', overflow: 'hidden'}}>
+                            <Map data={cleanData} mode={currentView} />
+                            {renderMapScale(currentView)}
+                        </div>
+                    </div>
                 </div>
             )}
           </div>
