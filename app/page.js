@@ -29,7 +29,7 @@ const getValue = (obj, keys) => {
 // Helper to clean 0s
 const filterZero = (val) => (val === 0 || val === null ? null : val);
 
-// === ATUALIZADO: DICIONÁRIO DE INFORMAÇÕES COM TEXTO TÉCNICO ===
+// === SENSOR INFO (REMOVED IMAGES) ===
 const sensorInfo = {
   dht11: {
     title: 'Sensor de Temperatura e Umidade (DHT11)',
@@ -50,18 +50,15 @@ const sensorInfo = {
           📄 DHT11 Datasheet
         </a>
       </span>
-    ),
-    img: 'https://upload.wikimedia.org/wikipedia/commons/8/86/DHT11_Temperature_and_Humidity_Sensor.jpg'
+    )
   },
   mq9: {
     title: 'Sensor de Gás Combustível e CO (MQ-9)',
-    desc: 'O sensor MQ-9 é sensível ao Monóxido de Carbono (CO) e gases inflamáveis como Metano e GLP. Ele opera através do aquecimento de uma pequena resistência interna e detecta a variação de condutividade na presença desses gases.',
-    img: 'https://m.media-amazon.com/images/I/61M-jWglRBL.jpg'
+    desc: 'O sensor MQ-9 é sensível ao Monóxido de Carbono (CO) e gases inflamáveis como Metano e GLP. Ele opera através do aquecimento de uma pequena resistência interna e detecta a variação de condutividade na presença desses gases.'
   },
   mq135: {
     title: 'Sensor de Qualidade do Ar (MQ-135)',
-    desc: 'O MQ-135 é utilizado para monitorar a qualidade do ar, sendo sensível a uma ampla gama de gases, incluindo Amônia (NH3), Óxidos de Nitrogênio (NOx), Álcool, Benzeno, Fumaça e Dióxido de Carbono (CO2).',
-    img: 'https://m.media-amazon.com/images/I/61Nl5gM11XL._AC_UF894,1000_QL80_.jpg'
+    desc: 'O MQ-135 é utilizado para monitorar a qualidade do ar, sendo sensível a uma ampla gama de gases, incluindo Amônia (NH3), Óxidos de Nitrogênio (NOx), Álcool, Benzeno, Fumaça e Dióxido de Carbono (CO2).'
   }
 };
 
@@ -208,12 +205,21 @@ export default function Home() {
         .nav-item:hover { background: rgba(255,255,255,0.5); }
         .sub-item { padding: 12px 50px; font-size: 0.9rem; font-weight: 600; color: #777; cursor: pointer; display: block; }
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
+        
         .content-wrapper { padding: 80px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
         .sub-nav-links { text-align: center; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 8px 0; margin-bottom: 0px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        .top-section-container { min-height: 80vh; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 130px; padding-bottom: 40px; }
+        .top-section-container { 
+            min-height: 80vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-start; 
+            padding-top: 130px; 
+            padding-bottom: 40px; 
+        }
+        
         .full-screen-section { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
         .main-title { text-align: center; font-size: 2.5rem; font-weight: 900; margin-bottom: 40px; line-height: 1.2; }
         .cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 0; }
@@ -237,9 +243,9 @@ export default function Home() {
             box-shadow: 0 5px 15px rgba(0,0,0,0.02); 
         }
         
-        .desc-content { display: flex; align-items: flex-start; gap: 30px; text-align: left; }
+        /* IMAGE REMOVED: Layout is now simple block */
+        .desc-content { display: block; text-align: left; }
         
-        /* ADJUSTED: DIV for text description to handle line breaks better */
         .desc-text { line-height: 1.6; margin: 0; color: #555; white-space: pre-line; }
 
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
@@ -264,7 +270,7 @@ export default function Home() {
             .sensor-layout .rounded-box { height: auto !important; }
             .sensor-layout .rounded-box-map { height: 400px !important; }
             
-            .desc-content { flex-direction: column; text-align: center; align-items: center; }
+            .desc-content { text-align: center; }
         }
         @media (min-width: 901px) { .main-title br { display: none; } }
       `}</style>
@@ -351,7 +357,7 @@ export default function Home() {
                 </select>
               </div>
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
-              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
+              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : activeGraph === 'hum' ? filteredGraphData.map(d => filterZero(d.hum)) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => filterZero(d.mq135)) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
           </>
         )}
@@ -362,20 +368,14 @@ export default function Home() {
           </div>
         )}
 
+        {/* SPECIFIC SENSOR VIEW - IMAGE REMOVED */}
         {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
           <div>
             <div className="sensor-title-container"><h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', margin: 0}}>{currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}</h1><div className="sensor-divider"></div></div>
             
-            {/* === ATUALIZADO: CAIXA DE DESCRIÇÃO COM LAYOUT DIVIDIDO === */}
+            {/* === DESCRIPTION BOX WITHOUT IMAGE === */}
             <div className="sensor-desc-box">
                 <div className="desc-content">
-                    {/* IMAGEM DO SENSOR */}
-                    <img 
-                        src={sensorInfo[currentView].img || "https://placehold.co/150x150?text=Sensor"} 
-                        alt={sensorInfo[currentView].title} 
-                        style={{width: '200px', borderRadius: '15px', border: '2px solid #eee', objectFit: 'cover'}} 
-                    />
-                    {/* TEXTO DESCRITIVO USANDO DIV PARA SUPORTAR HTML/LINKS */}
                     <div className="desc-text">
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>{sensorInfo[currentView].title}</h3>
                         {sensorInfo[currentView].desc}
