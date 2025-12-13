@@ -26,7 +26,13 @@ function RecenterAutomatically({ lat, lng }) {
 
 export default function Map({ data, mode }) {
   const defaultCenter = [-23.5505, -46.6333]; 
-  const latestValidData = data.find(d => d.latitude !== 0 && d.longitude !== 0);
+  
+  // Find the latest data point that has BOTH valid GPS AND valid Sensor Data for the current mode
+  const latestValidData = data.find(d => {
+    const val = mode === 'temp' ? d.temp : mode === 'hum' ? d.hum : mode === 'mq9' ? d.mq9 : d.mq135;
+    return d.latitude !== 0 && d.longitude !== 0 && val !== 0 && val !== null;
+  });
+
   const center = latestValidData 
     ? [latestValidData.latitude, latestValidData.longitude] 
     : defaultCenter;
@@ -41,16 +47,14 @@ export default function Map({ data, mode }) {
     const safeVal = val || 0;
     const pct = Math.min(Math.max(safeVal, 0), max) / max;
     
-    // VISUAL POLLUTION FIX: Inverse Logic
-    // High Intensity = Small & Sharp (Focus)
-    // Low Intensity = Big & Faded (Background)
-    
-    const size = 50 - (pct * 30); // Min size 20px, Max size 50px
-    const alpha = 0.2 + (pct * 0.8); // Min opacity 0.2, Max opacity 1.0
+    // VISUAL POLLUTION FIX:
+    // Low value = Big & Transparent (Background noise)
+    // High value = Small & Solid (Hotspot)
+    const size = 50 - (pct * 30); 
+    const alpha = 0.2 + (pct * 0.8); 
 
     const colorStr = `rgba(${r}, ${g}, ${b}, ${alpha})`;
     
-    // Soft borders using radial gradient
     const htmlStyles = `
       width: ${size}px; 
       height: ${size}px;
@@ -84,8 +88,14 @@ export default function Map({ data, mode }) {
                     mode === 'hum' ? reading.hum : 
                     mode === 'mq9' ? reading.mq9 : 
                     reading.mq135;
-                    
+        
+        // === THE FIX ===
+        // 1. Check GPS Validity
         if (!reading.latitude || !reading.longitude || (reading.latitude === 0 && reading.longitude === 0)) return null;
+        
+        // 2. Check SENSOR Validity (Clean Data)
+        // If the value is 0, null, or undefined, DO NOT draw a dot.
+        if (val === 0 || val === null || val === undefined) return null;
         
         return (
           <Marker 
@@ -96,7 +106,7 @@ export default function Map({ data, mode }) {
           >
             <Popup>
                <b>{new Date(reading.created_at).toLocaleTimeString('pt-BR')}</b><br/>
-               {mode.toUpperCase()}: {val ? Number(val).toFixed(2) : '0'}
+               {mode.toUpperCase()}: {Number(val).toFixed(2)}
             </Popup>
           </Marker>
         );
