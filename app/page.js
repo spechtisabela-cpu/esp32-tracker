@@ -120,10 +120,17 @@ export default function Home() {
     return '#fff';
   };
 
-  // === OPTIONS DEFINITIONS (MISSING PART ADDED HERE) ===
+  // === UPDATED: TINY GRAPHS NOW MATCH GASES GRAPH STYLE ===
   const tinyGraphOptions = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } }, 
+    plugins: { 
+        legend: { 
+            display: true, // Show Legend
+            position: 'top', 
+            align: 'end', 
+            labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } 
+        } 
+    }, 
     scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } },
     elements: { point: { radius: 0 } } 
   };
@@ -204,10 +211,12 @@ export default function Home() {
         .rounded-box { background-color: #fff; border-radius: 20px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 20px; }
         .bold-text { font-weight: 900 !important; }
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
-        .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
-        .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
         
-        /* TWO TINY GRAPHS ROW */
+        /* === UPDATED RATIO: MAP WIDER, GRAPHS NARROWER === */
+        /* Flex 3 for Map, Flex 1.3 for Graphs (Approx 70% / 30%) */
+        .map-column { flex: 3; min-width: 500px; display: flex; flex-direction: column; }
+        .side-graphs-col { flex: 1.3; min-width: 350px; display: flex; flex-direction: column; gap: 30px; }
+        
         .split-graphs-row { display: flex; gap: 20px; height: 200px; width: 100%; }
         
         .sensor-title-container { text-align: center; margin-bottom: 40px; margin-top: 40px; }
@@ -270,15 +279,15 @@ export default function Home() {
                     {/* TWO TINY SEPARATE GRAPHS */}
                     <div className="split-graphs-row">
                       <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.temp, textAlign: 'center'}}>🌡️ TEMP</h4>
+                        <h3 className="bold-text" style={{margin: '0 0 10px 0', fontSize: '1em'}}>🌡️ TEMP</h3>
                         <div style={{flex: 1, width: '100%'}}>
-                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                          <Line data={{labels: filteredLabels, datasets: [{ label: 'Temp', data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
                         </div>
                       </div>
                       <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.hum, textAlign: 'center'}}>💧 UMID</h4>
+                        <h3 className="bold-text" style={{margin: '0 0 10px 0', fontSize: '1em'}}>💧 UMID</h3>
                         <div style={{flex: 1, width: '100%'}}>
-                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                          <Line data={{labels: filteredLabels, datasets: [{ label: 'Umid', data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
                         </div>
                       </div>
                     </div>
