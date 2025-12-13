@@ -29,7 +29,7 @@ const getValue = (obj, keys) => {
 // Helper to clean 0s
 const filterZero = (val) => (val === 0 || val === null ? null : val);
 
-// === SENSOR INFO (REMOVED IMAGES) ===
+// === SENSOR INFO (UPDATED MQ135) ===
 const sensorInfo = {
   dht11: {
     title: 'Sensor de Temperatura e Umidade (DHT11)',
@@ -58,7 +58,26 @@ const sensorInfo = {
   },
   mq135: {
     title: 'Sensor de Qualidade do Ar (MQ-135)',
-    desc: 'O MQ-135 é utilizado para monitorar a qualidade do ar, sendo sensível a uma ampla gama de gases, incluindo Amônia (NH3), Óxidos de Nitrogênio (NOx), Álcool, Benzeno, Fumaça e Dióxido de Carbono (CO2).'
+    desc: (
+      <span>
+        O Sensor de Gás MQ-135 é um sensor semicondutor de óxido metálico (MOS) de baixo custo, desenvolvido para detectar uma ampla variedade de poluentes atmosféricos, incluindo amoníaco (NH₃), dióxido de nitrogênio (NO₂), benzeno (C₆H₆), álcoois, fumaça e CO₂ (dióxido de carbono). O módulo é amplamente utilizado em projetos de monitoramento da qualidade do ar.
+        <br/><br/>
+        <strong>Funcionamento:</strong> O MQ-135 opera com base no princípio da quimiorresistência do seu material sensível, que é tipicamente o Dióxido de Estanho (SnO₂). Para induzir a reatividade química necessária, o sensor possui um filamento aquecedor interno que mantém o elemento sensor em uma temperatura operacional elevada. Quando os gases poluentes entram em contato com a superfície aquecida do SnO₂, ocorre uma reação química que altera a condutividade elétrica do material semicondutor. Essa variação na condutividade é diretamente proporcional à concentração do gás e é medida como uma mudança na resistência elétrica do sensor, gerando um sinal de saída analógico.
+        <br/><br/>
+        <strong>Portas e Comunicação:</strong> O módulo MQ-135 oferece duas saídas: uma Analógica (A0), que fornece a leitura bruta da resistência, e uma saída Digital (D0), que pode ser configurada para disparar quando a concentração de gás excede um limiar predefinido (ajustável por potenciômetro). A alimentação padrão de operação é de 5V.
+        <br/><br/>
+        <strong>Limitações e Incertezas:</strong> A principal limitação é a baixa seletividade do sensor, pois ele reage a múltiplos gases simultaneamente, dificultando a isolação de um único poluente. Por isso, para aumentar a precisão na detecção de concentrações específicas, é essencial aplicar fatores de compensação que utilizam dados de temperatura e umidade.
+        <br/><br/>
+        <a 
+          href="https://www.winsen-sensor.com/d/files/PDF/Semiconductor%20Gas%20Sensor/MQ135%20(Ver1.4)%20-%20Manual.pdf" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{color: '#2c3e50', textDecoration: 'underline', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center'}}
+        >
+          📄 MQ135 Datasheet
+        </a>
+      </span>
+    )
   }
 };
 
@@ -243,7 +262,6 @@ export default function Home() {
             box-shadow: 0 5px 15px rgba(0,0,0,0.02); 
         }
         
-        /* IMAGE REMOVED: Layout is now simple block */
         .desc-content { display: block; text-align: left; }
         
         .desc-text { line-height: 1.6; margin: 0; color: #555; white-space: pre-line; }
