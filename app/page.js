@@ -26,6 +26,9 @@ const getValue = (obj, keys) => {
   return 0;
 };
 
+// Helper to clean 0s
+const filterZero = (val) => (val === 0 || val === null ? null : val);
+
 export default function Home() {
   const [rawData, setRawData] = useState([]);
   const [currentView, setCurrentView] = useState('home'); 
@@ -87,8 +90,7 @@ export default function Home() {
   const getFilteredData = () => graphData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   const filteredGraphData = getFilteredData();
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
-  const allLabels = graphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
-
+  
   const scrollTo = (ref) => {
     if (ref.current) {
       const y = ref.current.getBoundingClientRect().top + window.scrollY - 110;
@@ -118,7 +120,20 @@ export default function Home() {
     return '#fff';
   };
 
-  const overviewOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } }, scales: { x: { display: false }, y: { display: true } } };
+  // === OPTIONS DEFINITIONS (MISSING PART ADDED HERE) ===
+  const tinyGraphOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } }, 
+    scales: { x: { display: false }, y: { display: true, ticks: { font: { size: 10 } } } },
+    elements: { point: { radius: 0 } } 
+  };
+
+  const standardOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' }, color: '#54504a' } } },
+    scales: { x: { display: false }, y: { display: true } } 
+  };
+
   const detailOptions = { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { display: true } }, plugins: { legend: { display: true, labels: { font: { size: 14 } } } } };
 
   const renderMapScale = (modeOverride = null) => {
@@ -137,12 +152,11 @@ export default function Home() {
     );
   };
 
-  // 2. THICKER BORDER (Changed to 4px)
   const getCardStyle = (color) => ({ 
     backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.15)'), 
     borderRadius: '15px', 
     padding: '10px 15px', 
-    border: `4px solid ${color}`, // BORDER IS NOW THICKER
+    border: `4px solid ${color}`, 
     textAlign: 'center', 
     height: '100%', 
     display: 'flex', 
@@ -153,7 +167,7 @@ export default function Home() {
     color: colors.text, 
     boxShadow: '0 4px 6px rgba(0,0,0,0.05)' 
   });
-
+  
   const btnStyle = (key, color, activeKey) => ({ padding: '10px 20px', border: 'none', backgroundColor: activeKey === key ? color : '#e0e0e0', color: activeKey === key ? '#fff' : '#54504a', fontWeight: '900', cursor: 'pointer', borderRadius: '15px', fontSize: '0.9rem', transition: 'all 0.2s', margin: '5px', boxShadow: activeKey === key ? `0 4px 10px ${color}66` : 'none' });
 
   return (
@@ -170,32 +184,16 @@ export default function Home() {
         .sub-item:hover { color: #000; background: rgba(255,255,255,0.5); }
         
         .content-wrapper { padding: 80px 5% 60px 5%; max-width: 1400px; margin: 0 auto; min-height: 100vh; }
-        
-        /* 1. TIGHTER SUB-NAV (Reduced Padding) */
-        .sub-nav-links { 
-            text-align: center; 
-            font-size: 0.85em; 
-            color: ${colors.text}; 
-            font-weight: bold; 
-            position: sticky; 
-            top: 60px; 
-            z-index: 1000; 
-            background: ${colors.bg}; 
-            padding: 5px 0; /* SMALLER PADDING */
-            margin-bottom: 0px; 
-            border-bottom: 1px solid rgba(0,0,0,0.05); 
-        }
-        
+        .sub-nav-links { text-align: center; font-size: 0.85em; color: ${colors.text}; font-weight: bold; position: sticky; top: 60px; z-index: 1000; background: ${colors.bg}; padding: 8px 0; margin-bottom: 0px; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .sub-nav-item { cursor: pointer; transition: opacity 0.2s; padding: 5px; }
         .sub-nav-item:hover { opacity: 0.6; }
         
-        /* 3. PUSH DOWN TITLE (Increased Padding Top) */
         .top-section-container { 
             min-height: 80vh; 
             display: flex; 
             flex-direction: column; 
             justify-content: flex-start; 
-            padding-top: 130px; /* MOVED DOWN */
+            padding-top: 130px; 
             padding-bottom: 40px; 
         }
         
@@ -208,11 +206,15 @@ export default function Home() {
         .flex-columns { display: flex; gap: 30px; flex-wrap: wrap; height: 100%; width: 100%; }
         .map-column { flex: 1 1 500px; display: flex; flex-direction: column; }
         .side-graphs-col { flex: 1 1 400px; display: flex; flex-direction: column; gap: 30px; }
+        
+        /* TWO TINY GRAPHS ROW */
+        .split-graphs-row { display: flex; gap: 20px; height: 200px; width: 100%; }
+        
         .sensor-title-container { text-align: center; margin-bottom: 40px; margin-top: 40px; }
         .sensor-divider { width: 100px; height: 3px; background: #000; margin: 15px auto 0 auto; opacity: 0.3; }
         .sensor-desc-box { background: #fff; border-radius: 20px; padding: 30px; border: 2px solid #fff; max-width: 800px; margin: 0 auto 20px auto; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
-        @media (max-width: 900px) { .content-wrapper { padding: 80px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; min-height: 250px; } .sensor-layout { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .content-wrapper { padding: 80px 4% 40px 4%; } .header-title { display: block; font-size: 0.9em; position: static; pointer-events: auto; } .header-right { display: none; } .main-title br { display: block; } .main-title { font-size: 1.8rem; margin-bottom: 30px; } .cards-container { grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 50px; } .cards-container > div { min-height: 110px; padding: 10px; } .cards-container .reading-val { font-size: 1.4em; } .full-screen-section, .top-section-container { min-height: auto; display: block; padding: 20px 0; } .rounded-box-map { height: 500px !important; min-height: 500px !important; display: block !important; width: 100% !important; } .flex-columns { flex-direction: column; align-items: center; width: 100%; } .map-column { width: 100%; flex: auto; max-width: 100%; } .side-graphs-col { flex-direction: row; width: 100%; margin-top: 30px; } .side-graphs-col > div { flex: 1; } .split-graphs-row { flex-direction: column; height: auto; } .split-graphs-row > div { height: 200px; } .sensor-layout { grid-template-columns: 1fr; } }
         @media (min-width: 901px) { .main-title br { display: none; } }
         @media (max-width: 500px) { .side-graphs-col { flex-direction: column; } }
       `}</style>
@@ -243,7 +245,6 @@ export default function Home() {
             <div ref={sectionMedidas} className="top-section-container">
                 <h1 className="main-title">MONITORAMENTO <br/> DA QUALIDADE DO AR</h1>
                 <div className="cards-container">
-                  {/* 4. BIGGER TITLES IN BOXES (1.1em) */}
                   <div style={getCardStyle(colors.temp)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Temperatura</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.temp?.toFixed(2)}°C</div></div>
                   <div style={getCardStyle(colors.hum)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Umidade</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.hum?.toFixed(2)}%</div></div>
                   <div style={getCardStyle(colors.mq9)}><div style={{fontWeight: '900', fontSize: '1.1em', textTransform: 'uppercase', marginBottom: '5px'}}>Gás (MQ9)</div><div className="reading-val" style={{fontWeight: '900', fontSize: '2.2em'}}>{latest.mq9?.toFixed(2)}</div></div>
@@ -266,8 +267,28 @@ export default function Home() {
                         </select>
                     </div>
 
-                    <div className="rounded-box" style={{flex: 1}}><h3 className="bold-text" style={{margin: '0 0 15px 0'}}>🌦️ CLIMA</h3><div style={{height: '200px'}}><Line data={{labels: filteredLabels, datasets: [{ label: 'Temp 🌡️ (°C)', data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2.5, pointRadius: 0 }, { label: 'Umid 💧 (%)', data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2.5, pointRadius: 0 }]}} options={overviewOptions} /></div></div>
-                    <div className="rounded-box" style={{flex: 1}}><h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3><div style={{height: '200px'}}><Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9 🔥 (PPM)', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 }, { label: 'MQ135 💨 (PPM)', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }]}} options={overviewOptions} /></div></div>
+                    {/* TWO TINY SEPARATE GRAPHS */}
+                    <div className="split-graphs-row">
+                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.temp, textAlign: 'center'}}>🌡️ TEMP</h4>
+                        <div style={{flex: 1, width: '100%'}}>
+                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.temp)), borderColor: colors.temp, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                        </div>
+                      </div>
+                      <div className="rounded-box" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                        <h4 style={{margin: '0 0 10px 0', fontSize: '0.9em', color: colors.hum, textAlign: 'center'}}>💧 UMID</h4>
+                        <div style={{flex: 1, width: '100%'}}>
+                          <Line data={{labels: filteredLabels, datasets: [{ data: filteredGraphData.map(d => filterZero(d.hum)), borderColor: colors.hum, borderWidth: 2, pointRadius: 0 }]}} options={tinyGraphOptions} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-box" style={{flex: 1}}>
+                      <h3 className="bold-text" style={{margin: '0 0 15px 0'}}>⚠️ GASES</h3>
+                      <div style={{height: '200px'}}>
+                        <Line data={{labels: filteredLabels, datasets: [{ label: 'MQ9 🔥 (PPM)', data: filteredGraphData.map(d => d.mq9), borderColor: colors.mq9, borderWidth: 2.5, pointRadius: 0 }, { label: 'MQ135 💨 (PPM)', data: filteredGraphData.map(d => filterZero(d.mq135)), borderColor: colors.mq135, borderWidth: 2.5, pointRadius: 0 }]}} options={standardOptions} />
+                      </div>
+                    </div>
                   </div>
                 </div>
             </div>
@@ -320,7 +341,7 @@ export default function Home() {
                 ) : ( <p style={{textAlign:'center', color:'#999', marginTop:'30px', fontStyle:'italic'}}>Selecione uma leitura acima para visualizar.</p> )
             ) : (
                 <div className="sensor-layout">
-                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => d.mq135), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
+                    <div className="rounded-box"><div style={{display:'flex', justifyContent:'space-between'}}><h3 className="bold-text">{currentView === 'mq9' ? 'GÁS COMBUSTÍVEL (PPM)' : 'QUALIDADE DO AR'}</h3><h3 className="bold-text" style={{color: currentView === 'mq9' ? colors.mq9 : colors.mq135}}>Última: {currentView === 'mq9' ? (latest.mq9?.toFixed(2) || '0') : (latest.mq135?.toFixed(2) || '0')}</h3></div><div style={{height: '250px'}}><Line data={{labels: filteredLabels, datasets: [{ label: currentView === 'mq9' ? 'MQ9' : 'MQ135', data: currentView === 'mq9' ? filteredGraphData.map(d => d.mq9) : filteredGraphData.map(d => filterZero(d.mq135)), borderColor: currentView === 'mq9' ? colors.mq9 : colors.mq135, fill: true, backgroundColor: currentView === 'mq9' ? 'rgba(255, 159, 64, 0.2)' : 'rgba(75, 192, 192, 0.2)', tension: 0.3 }]}} options={detailOptions} /></div></div>
                     <div className="rounded-box rounded-box-map" style={{minHeight: '400px', position: 'relative'}}><h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3><Map data={filteredGraphData} mode={currentView} />{renderMapScale(currentView)}</div>
                 </div>
             )}
