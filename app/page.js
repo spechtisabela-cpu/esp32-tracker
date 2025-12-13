@@ -29,7 +29,7 @@ const getValue = (obj, keys) => {
 // Helper to clean 0s
 const filterZero = (val) => (val === 0 || val === null ? null : val);
 
-// === SENSOR INFO (UPDATED MQ135) ===
+// === SENSOR INFO ===
 const sensorInfo = {
   dht11: {
     title: 'Sensor de Temperatura e Umidade (DHT11)',
@@ -264,7 +264,15 @@ export default function Home() {
         
         .desc-content { display: block; text-align: left; }
         
-        .desc-text { line-height: 1.6; margin: 0; color: #555; white-space: pre-line; }
+        /* JUSTIFIED TEXT ALIGNMENT */
+        .desc-text { 
+            line-height: 1.6; 
+            margin: 0; 
+            color: #555; 
+            white-space: pre-line; 
+            text-align: justify; 
+            text-justify: inter-word; /* Optional for better browser support */
+        }
 
         .sensor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
         
@@ -289,6 +297,7 @@ export default function Home() {
             .sensor-layout .rounded-box-map { height: 400px !important; }
             
             .desc-content { text-align: center; }
+            .desc-text { text-align: left; } /* Optional: Justify often looks bad on mobile, so default to left */
         }
         @media (min-width: 901px) { .main-title br { display: none; } }
       `}</style>
@@ -375,7 +384,7 @@ export default function Home() {
                 </select>
               </div>
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
-              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : activeGraph === 'hum' ? filteredGraphData.map(d => filterZero(d.hum)) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => filterZero(d.mq135)) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
+              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
           </>
         )}
@@ -386,12 +395,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* SPECIFIC SENSOR VIEW - IMAGE REMOVED */}
         {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
           <div>
             <div className="sensor-title-container"><h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', margin: 0}}>{currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}</h1><div className="sensor-divider"></div></div>
             
-            {/* === DESCRIPTION BOX WITHOUT IMAGE === */}
             <div className="sensor-desc-box">
                 <div className="desc-content">
                     <div className="desc-text">
