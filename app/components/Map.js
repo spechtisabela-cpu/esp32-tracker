@@ -17,7 +17,7 @@ if (typeof window !== 'undefined') {
 function RecenterAutomatically({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
-    if (lat !== 0 && lng !== 0 && lat !== undefined && lng !== undefined) {
+    if (lat && lng) {
       map.setView([lat, lng], 17);
     }
   }, [lat, lng, map]);
@@ -26,12 +26,21 @@ function RecenterAutomatically({ lat, lng }) {
 
 export default function Map({ data, mode }) {
   const defaultCenter = [-23.5505, -46.6333]; 
-  
-  // Find the latest data point that has BOTH valid GPS AND valid Sensor Data for the current mode
-  const latestValidData = data.find(d => {
-    const val = mode === 'temp' ? d.temp : mode === 'hum' ? d.hum : mode === 'mq9' ? d.mq9 : d.mq135;
-    return d.latitude !== 0 && d.longitude !== 0 && val !== 0 && val !== null;
+
+  // --- LOGIC FIX: FILTER DATA BASED ON MODE ---
+  // We only consider data valid if GPS is not 0 AND the specific sensor value is not 0
+  const validData = data.filter(d => {
+    const val = mode === 'temp' ? d.temp : 
+                mode === 'hum' ? d.hum : 
+                mode === 'mq9' ? d.mq9 : 
+                d.mq135;
+    
+    // STRICT CHECK: Value must exist and NOT be 0
+    return d.latitude !== 0 && d.longitude !== 0 && val !== 0 && val !== null && val !== undefined;
   });
+
+  // Find the latest VALID reading (not just the latest timestamp)
+  const latestValidData = validData.length > 0 ? validData[0] : null;
 
   const center = latestValidData 
     ? [latestValidData.latitude, latestValidData.longitude] 
@@ -47,9 +56,6 @@ export default function Map({ data, mode }) {
     const safeVal = val || 0;
     const pct = Math.min(Math.max(safeVal, 0), max) / max;
     
-    // VISUAL POLLUTION FIX:
-    // Low value = Big & Transparent (Background noise)
-    // High value = Small & Solid (Hotspot)
     const size = 50 - (pct * 30); 
     const alpha = 0.2 + (pct * 0.8); 
 
@@ -83,20 +89,13 @@ export default function Map({ data, mode }) {
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
       />
       
-      {data.map((reading, index) => {
+      {/* Use validData array (which already excludes zeros) */}
+      {validData.map((reading, index) => {
         const val = mode === 'temp' ? reading.temp : 
                     mode === 'hum' ? reading.hum : 
                     mode === 'mq9' ? reading.mq9 : 
                     reading.mq135;
-        
-        // === THE FIX ===
-        // 1. Check GPS Validity
-        if (!reading.latitude || !reading.longitude || (reading.latitude === 0 && reading.longitude === 0)) return null;
-        
-        // 2. Check SENSOR Validity (Clean Data)
-        // If the value is 0, null, or undefined, DO NOT draw a dot.
-        if (val === 0 || val === null || val === undefined) return null;
-        
+
         return (
           <Marker 
             key={index} 
@@ -112,9 +111,10 @@ export default function Map({ data, mode }) {
         );
       })}
       
+      {/* Only show "Current Location" if there is valid data for this sensor */}
       {latestValidData && (
         <Marker position={[latestValidData.latitude, latestValidData.longitude]}>
-          <Popup>Current Location</Popup>
+          <Popup>Current Location ({mode.toUpperCase()})</Popup>
         </Marker>
       )}
     </MapContainer>
