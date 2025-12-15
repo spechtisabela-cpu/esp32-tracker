@@ -113,6 +113,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // 1. RAW DATA PROCESSED (Newest -> Oldest)
   const cleanData = useMemo(() => {
     const processed = rawData.map(d => ({
       created_at: d.created_at,
@@ -138,16 +139,17 @@ export default function Home() {
 
   const latest = useMemo(() => cleanData.length > 0 ? cleanData[0] : { temp: 0, hum: 0, mq9: 0, mq135: 0, latitude: 0, longitude: 0 }, [cleanData]);
   
-  // === FIX: SEPARATE DATA FOR MAP AND GRAPHS ===
-  const availableDates = useMemo(() => [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))], [cleanData]);
-  
-  // 1. FILTERED DATA (Newest -> Oldest) for MAPS
-  const filteredData = useMemo(() => {
-      return cleanData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
+  // === CRITICAL FIX: DATA FOR MAPS (FILTERED BY DATE) ===
+  // Filter cleanData by date, keeping the Newest -> Oldest order for correct "Last Location" logic on map
+  const filteredMapData = useMemo(() => {
+    return cleanData.filter(d => new Date(d.created_at).toLocaleDateString('pt-BR') === selectedDate);
   }, [cleanData, selectedDate]);
 
-  // 2. FILTERED GRAPH DATA (Oldest -> Newest) for CHARTS
-  const filteredGraphData = useMemo(() => [...filteredData].reverse(), [filteredData]);
+  // === DATA FOR GRAPHS (FILTERED & REVERSED) ===
+  // Reverse for chronological order (Oldest -> Newest)
+  const filteredGraphData = useMemo(() => [...filteredMapData].reverse(), [filteredMapData]);
+  
+  const availableDates = useMemo(() => [...new Set(cleanData.map(d => new Date(d.created_at).toLocaleDateString('pt-BR')))], [cleanData]);
   
   const filteredLabels = filteredGraphData.map(d => new Date(d.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}));
 
@@ -338,8 +340,8 @@ export default function Home() {
                 <div className="flex-columns">
                   <div className="map-column">
                     <h3 style={{margin: '0 0 15px 0', fontSize: '1.4em', color: colors.text}}><span className="bold-text">LOCAL:</span> <span>SÃO PAULO - SP (IFUSP)</span></h3>
-                    {/* FIXED: USE filteredData FOR MAP */}
-                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={filteredData} mode={mapMode} />{renderMapScale()}</div>
+                    {/* FIXED: USING filteredMapData */}
+                    <div className="rounded-box rounded-box-map" style={{flex: 1, padding: '5px', background: '#fff', border: '3px solid #fff', position: 'relative', minHeight: '400px'}}><Map data={filteredMapData} mode={mapMode} />{renderMapScale()}</div>
                     <div style={{marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap:'wrap'}}><button style={btnStyle('temp', colors.temp, mapMode)} onClick={() => setMapMode('temp')}>Temp</button><button style={btnStyle('hum', colors.hum, mapMode)} onClick={() => setMapMode('hum')}>Umid</button><button style={btnStyle('mq9', colors.mq9, mapMode)} onClick={() => setMapMode('mq9')}>MQ9</button><button style={btnStyle('mq135', colors.mq135, mapMode)} onClick={() => setMapMode('mq135')}>MQ135</button></div>
                   </div>
                   <div className="side-graphs-col">
@@ -384,7 +386,7 @@ export default function Home() {
                 </select>
               </div>
               <div style={{marginBottom: '30px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center'}}><button style={btnStyle('temp', colors.temp, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'temp' ? null : 'temp')}>TEMPERATURA</button><button style={btnStyle('hum', colors.hum, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'hum' ? null : 'hum')}>UMIDADE</button><button style={btnStyle('mq9', colors.mq9, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq9' ? null : 'mq9')}>GÁS (MQ9)</button><button style={btnStyle('mq135', colors.mq135, activeGraph)} onClick={() => setActiveGraph(activeGraph === 'mq135' ? null : 'mq135')}>AR (MQ135)</button></div>
-              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => filterZero(d.temp)) : activeGraph === 'hum' ? filteredGraphData.map(d => filterZero(d.hum)) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => filterZero(d.mq135)) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
+              {activeGraph && (<div className="rounded-box" style={{background: '#fff', height: '400px'}}><Line data={{labels: filteredLabels, datasets: [{ label: activeGraph === 'temp' ? 'Temperatura 🌡️ (°C)' : activeGraph === 'hum' ? 'Umidade 💧 (%)' : activeGraph === 'mq9' ? 'Gás MQ9 🔥 (PPM)' : 'Ar MQ135 💨 (PPM)', data: activeGraph === 'temp' ? filteredGraphData.map(d => d.temp) : activeGraph === 'hum' ? filteredGraphData.map(d => d.hum) : activeGraph === 'mq9' ? filteredGraphData.map(d => d.mq9) : activeGraph === 'mq135' ? filteredGraphData.map(d => d.mq135) : [], borderColor: activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135, backgroundColor: (activeGraph === 'temp' ? colors.temp : activeGraph === 'hum' ? colors.hum : activeGraph === 'mq9' ? colors.mq9 : colors.mq135).replace('rgb','rgba').replace(')', ',0.2)'), fill: true, tension: 0.3 }]}} options={detailOptions} /></div>)}
             </div>
           </>
         )}
@@ -395,7 +397,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* SPECIFIC SENSOR PAGE - FIXED: USE FILTERED DATA FOR MAP */}
         {(currentView === 'dht11' || currentView === 'mq9' || currentView === 'mq135') && (
           <div>
             <div className="sensor-title-container"><h1 className="bold-text" style={{fontSize: '2.5em', textTransform: 'uppercase', margin: 0}}>{currentView === 'dht11' ? 'DHT11' : currentView.toUpperCase()}</h1><div className="sensor-divider"></div></div>
@@ -437,8 +438,7 @@ export default function Home() {
                         </div>
                         <div className="rounded-box rounded-box-map" style={{height: '400px', minHeight: '400px', position: 'relative'}}>
                             <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({dhtMode === 'temp' ? 'TEMPERATURA' : 'UMIDADE'})</h3>
-                            {/* FIXED: USING FILTERED DATA FOR SENSOR MAP */}
-                            <Map data={filteredData} mode={dhtMode} />
+                            <Map data={filteredMapData} mode={dhtMode} />
                             {renderMapScale(dhtMode)}
                         </div>
                     </div>
@@ -456,8 +456,7 @@ export default function Home() {
                     </div>
                     <div className="rounded-box rounded-box-map" style={{height: '400px', minHeight: '400px', position: 'relative'}}>
                         <h3 className="bold-text" style={{marginBottom: '10px'}}>MAPA ({currentView === 'mq9' ? 'MQ9' : 'MQ135'})</h3>
-                        {/* FIXED: USING FILTERED DATA FOR SENSOR MAP */}
-                        <Map data={filteredData} mode={currentView} />
+                        <Map data={filteredMapData} mode={currentView} />
                         {renderMapScale(currentView)}
                     </div>
                 </div>
